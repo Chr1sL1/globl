@@ -1525,10 +1525,13 @@ static void co_func(co_t co, void* param)
 {
 	for(int i = 0; i < 10; ++i)
 	{
-		printf("i = %d\n", i);
+//		printf("i = %d\n", i);
 
 		if(i % 2 == 0)
+		{
+			printf("try yield: %p\n", co);
 			co_yield(co);
+		}
 	}
 }
 
@@ -1541,10 +1544,13 @@ void test_co()
 
 	for(int j = 10; j < 20; ++j)
 	{
-		printf(">>> j = %d\n", j);
+//		printf(">>> j = %d\n", j);
 
 		if(j % 3 == 0)
+		{
+			printf("try resume: %p\n", co);
 			co_resume(co);
+		}
 	}
 
 error_ret:
@@ -1566,7 +1572,7 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	rslt = init_mm(15);
+	rslt = init_mm(30);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

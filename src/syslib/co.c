@@ -78,6 +78,7 @@ co_t co_create(co_func_t func)
 	co->_co_stack_top = co - sizeof(struct _reg_context);
 	co->_co_stack_bottom = co_stack;
 
+	printf("co_create: %p\n", co);
 	return co;
 error_ret:
 	return 0;
@@ -97,20 +98,26 @@ error_ret:
 
 static void __co_run(struct _co_impl* coi, void* param)
 {
+	printf("__co_run: %p\n", coi);
 	coi->_co_func_ret_addr = __builtin_return_address(0);
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_yield_ret_rsp));
+
+	asm volatile ("movq %0, %%rdi\n" : :"r" (coi));
+	asm volatile ("movq %0, %%rsi\n" : :"r" (param));
+
 	asm volatile ("call *(%0)\n" : :"r" (&coi->_co_func));
 }
 
 int co_run(co_t co, void* co_func_param)
 {
+	printf("co_run: %p\n", co);
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_run: invalid param");
+
 
 	asm volatile ("movq %%rbp, %0\n" :"=r" (coi->_co_run_rbp));
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_run_rsp));
 	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_stack_top - 16));
-
 	__co_run(coi, co_func_param);
 
 	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_run_rsp));
@@ -124,6 +131,7 @@ error_ret:
 int co_yield(co_t co)
 {
 	unsigned long current_rsp;
+	printf("co_yield: %p\n", co);
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_yield: invalid param");
 
@@ -157,13 +165,16 @@ int co_yield(co_t co)
 
 	return 0;
 error_ret:
+	printf("co: %p\n", co);
 	return -1;
 }
 
 int co_resume(co_t co)
 {
+	printf("co_resume: %p\n", co);
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_resume: invalid param");
+
 
 	coi->_resume_flag = 1;
 
