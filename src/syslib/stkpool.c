@@ -136,8 +136,8 @@ struct _stkp_impl* _stkp_init(void* addr, unsigned long total_size, unsigned int
 		stkpi->_node_pool[i]._payload_addr = payload_ptr + stkpi->_sys_pg_size;
 		lst_push_back(&stkpi->_free_list, &stkpi->_node_pool[i]._dln);
 
-		rslt = mprotect(payload_ptr, stkpi->_sys_pg_size, PROT_READ);
-		err_exit(rslt < 0, "mprotect failed with errorcode: %d.", errno);
+//		rslt = mprotect(payload_ptr, stkpi->_sys_pg_size, PROT_READ);
+//		err_exit(rslt < 0, "mprotect failed with errorcode: %d.", errno);
 	}
 
 	return stkpi;
@@ -187,12 +187,12 @@ void stkp_destroy(struct stkpool* stkp)
 
 
 	// restore mprotected pages.
-	for(int i = 0; i < stkpi->_stk_frm_cnt; ++i)
-	{
-		rslt = mprotect(p, stkpi->_sys_pg_size, PROT_READ | PROT_WRITE);
-		if(rslt < 0)
-			fprintf(stderr, "mprotect failed @ 0x%p.\n", p);
-	}
+//	for(int i = 0; i < stkpi->_stk_frm_cnt; ++i)
+//	{
+//		rslt = mprotect(p, stkpi->_sys_pg_size, PROT_READ | PROT_WRITE);
+//		if(rslt < 0)
+//			fprintf(stderr, "mprotect failed @ 0x%p.\n", p);
+//	}
 
 	stkpi->_stkp_tag = 0;
 

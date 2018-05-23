@@ -1519,9 +1519,11 @@ struct test_stru
 	unsigned long t3;
 } __attribute__((aligned(16)));
 
-void co_func(co_t co, void* param)
+static void co_func(co_t co, void* param) __attribute__((noinline));
+
+static void co_func(co_t co, void* param)
 {
-	for(int i = 0; i < 100; ++i)
+	for(int i = 0; i < 10; ++i)
 	{
 		printf("i = %d\n", i);
 
@@ -1537,7 +1539,7 @@ void test_co()
 
 	co_run(co, 0);
 
-	for(int j = 100; j < 200; ++j)
+	for(int j = 10; j < 20; ++j)
 	{
 		printf(">>> j = %d\n", j);
 
@@ -1564,7 +1566,7 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	rslt = init_mm(21);
+	rslt = init_mm(15);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

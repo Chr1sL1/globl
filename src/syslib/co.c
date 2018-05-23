@@ -46,6 +46,7 @@ extern asm_co_run(struct co_impl*, void*, co_func_t func);
 extern asm_co_yield(struct co_impl*);
 extern asm_co_resume(struct co_impl*);
 
+static void __co_run(struct _co_impl* coi, void* param) __attribute__((noinline));
 
 static inline struct _co_impl* __conv_co(co_t co)
 {
@@ -98,7 +99,7 @@ static void __co_run(struct _co_impl* coi, void* param)
 {
 	coi->_co_func_ret_addr = __builtin_return_address(0);
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_yield_ret_rsp));
-	(*coi->_co_func)(coi, param);
+	asm volatile ("call *(%0)\n" : :"r" (&coi->_co_func));
 }
 
 int co_run(co_t co, void* co_func_param)
@@ -124,7 +125,7 @@ int co_yield(co_t co)
 {
 	unsigned long current_rsp;
 	struct _co_impl* coi = __conv_co(co);
-	err_exit(!coi, "co_run: invalid param");
+	err_exit(!coi, "co_yield: invalid param");
 
 	asm volatile ("movq %%rax, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rax));
 	asm volatile ("movq %%rbx, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rbx));
@@ -162,7 +163,7 @@ error_ret:
 int co_resume(co_t co)
 {
 	struct _co_impl* coi = __conv_co(co);
-	err_exit(!coi, "co_run: invalid param");
+	err_exit(!coi, "co_resume: invalid param");
 
 	coi->_resume_flag = 1;
 
