@@ -19,6 +19,7 @@
 #include "mmspace.h"
 #include "net.h"
 #include "timer.h"
+#include "co.h"
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
@@ -1467,7 +1468,7 @@ static void _task_func(utask_t task, void* param)
 {
 	for(int i = 0; i < 100; ++i)
 	{
-		printf("%d\n", i);
+//		printf("%d\n", i);
 		utsk_yield(task);
 	}
 }
@@ -1476,7 +1477,7 @@ static long __last_tm = 0;
 
 static void _test_task_timer(timer_handle_t t, void* p)
 {
-	printf("on timer: %ld\n", dbg_current_tick() - __last_tm);
+//	printf("on timer: %ld\n", dbg_current_tick() - __last_tm);
 	__last_tm = dbg_current_tick();
 	utask_t task = (utask_t*)p;
 	utsk_resume(task);
@@ -1503,16 +1504,50 @@ void test_timer(void)
 
 	for(int i = 0; i < 100000; ++i)
 	{
-//		printf("i = %d\n", i);
 		on_tick();
-		usleep(1000);
+//		usleep(1000);
 	}
 
 error_ret:
 	return;
 }
 
+struct test_stru
+{
+	unsigned long t1;
+	unsigned long t2;
+	unsigned long t3;
+} __attribute__((aligned(16)));
 
+void co_func(co_t co, void* param)
+{
+	for(int i = 0; i < 100; ++i)
+	{
+		printf("i = %d\n", i);
+
+		if(i % 2 == 0)
+			co_yield(co);
+	}
+}
+
+void test_co()
+{
+	co_t co = co_create(co_func);
+	err_exit(!co, "failed.");
+
+	co_run(co, 0);
+
+	for(int j = 100; j < 200; ++j)
+	{
+		printf(">>> j = %d\n", j);
+
+		if(j % 3 == 0)
+			co_resume(co);
+	}
+
+error_ret:
+	return;
+}
 
 int main(void)
 {
@@ -1523,17 +1558,21 @@ int main(void)
 	unsigned long seed = time(0);
 	srandom(seed);
 
+	printf("test_stru: %ld\n", sizeof(struct test_stru));
+
 	struct bit_set bs;
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	rslt = init_mm(163);
+	rslt = init_mm(21);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);
 
 //	test_task();
-	test_timer();
+//	test_timer();
+//	dd
+	test_co();
 
 	mm_uninitialize();
 
