@@ -1537,10 +1537,17 @@ static void co_func(co_t co, void* param)
 
 void test_co()
 {
+	void* rsp = 0;
 	co_t co = co_create(co_func);
 	err_exit(!co, "failed.");
 
+	asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
+	printf("before run rsp: %p\n", rsp);
+
 	co_run(co, 0);
+
+	asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
+	printf("after run rsp: %p\n", rsp);
 
 	for(int j = 10; j < 20; ++j)
 	{
@@ -1548,7 +1555,12 @@ void test_co()
 
 		if(j % 3 == 0)
 		{
-			printf("try resume: %p\n", co);
+			asm volatile ("movq %%rbp, %0\n" :"=r" (rsp));
+			printf("before resume rbp: %p\n", rsp);
+			asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
+			printf("before resume rsp: %p\n", rsp);
+
+			printf("try resume: %p, j = %d\n", co, j);
 			co_resume(co);
 		}
 	}
@@ -1572,7 +1584,7 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	rslt = init_mm(30);
+	rslt = init_mm(53);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

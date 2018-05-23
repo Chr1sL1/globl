@@ -39,6 +39,7 @@ struct _co_impl
 	void* _co_yield_ret_rsp;
 	void* _co_run_rsp;
 	void* _co_run_rbp;
+	void* _co_run_rbx;
 	unsigned long _resume_flag;
 } __attribute__((aligned(16)));
 
@@ -100,6 +101,9 @@ static void __co_run(struct _co_impl* coi, void* param)
 {
 	printf("__co_run: %p\n", coi);
 	coi->_co_func_ret_addr = __builtin_return_address(0);
+
+	printf("__co_run ret: [%p]\n", (coi->_co_func_ret_addr));
+
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_yield_ret_rsp));
 
 	asm volatile ("movq %0, %%rdi\n" : :"r" (coi));
@@ -114,14 +118,20 @@ int co_run(co_t co, void* co_func_param)
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_run: invalid param");
 
-
+	asm volatile ("movq %%rbx, %0\n" :"=r" (coi->_co_run_rbx));
 	asm volatile ("movq %%rbp, %0\n" :"=r" (coi->_co_run_rbp));
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_run_rsp));
+
 	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_stack_top - 16));
 	__co_run(coi, co_func_param);
 
 	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_run_rsp));
 	asm volatile ("movq %0, %%rbp\n" : :"r" (coi->_co_run_rbp));
+	asm volatile ("movq %0, %%rbx\n" : :"r" (coi->_co_run_rbx));
+
+//	printf("after co_yield rip: [%p]\n", coi->_co_func_ret_addr);
+//	printf("after co_run rsp: [%p]\n", coi->_co_run_rsp);
+//	printf("after co_run rbp: [%p]\n", coi->_co_run_rbp);
 
 	return 0;
 error_ret:
