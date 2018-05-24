@@ -1525,11 +1525,10 @@ static void co_func(co_t co, void* param)
 {
 	for(int i = 0; i < 10; ++i)
 	{
-//		printf("i = %d\n", i);
+		printf("i = %d\n", i);
 
-		if(i % 2 == 0)
+		if(i % 4 == 0)
 		{
-			printf("try yield: %p\n", co);
 			co_yield(co);
 		}
 	}
@@ -1551,16 +1550,10 @@ void test_co()
 
 	for(int j = 10; j < 20; ++j)
 	{
-//		printf(">>> j = %d\n", j);
+		printf(">>> j = %d\n", j);
 
-		if(j % 3 == 0)
+		if(j % 2 == 0)
 		{
-			asm volatile ("movq %%rbp, %0\n" :"=r" (rsp));
-			printf("before resume rbp: %p\n", rsp);
-			asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
-			printf("before resume rsp: %p\n", rsp);
-
-			printf("try resume: %p, j = %d\n", co, j);
 			co_resume(co);
 		}
 	}
@@ -1584,7 +1577,7 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	rslt = init_mm(53);
+	rslt = init_mm(207);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

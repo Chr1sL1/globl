@@ -30,20 +30,25 @@ struct _reg_context
 
 struct _co_impl
 {
-	unsigned long _magic_num;
-	co_func_t _co_func;
-	void* _co_stack_top;
-	void* _co_stack_bottom;
-	void* _co_func_ret_addr;
-	void* _co_yield_addr;
-	void* _co_yield_ret_rsp;
-	void* _co_run_rsp;
-	void* _co_run_rbp;
-	void* _co_run_rbx;
-	unsigned long _resume_flag;
+	unsigned long _magic_num;		// 0x0
+	co_func_t _co_func;				// 0x08
+
+	void* _co_stack_top;			// 0x10
+	void* _co_stack_bottom;			// 0x18
+
+	void* _co_yield_ret_rsp;		// 0x20
+	void* _co_func_ret_addr;		// 0x28
+
+	unsigned long _co_resume_flag;	// 0x30
+	unsigned long _co_jump_flag;	// 0x38
+
+	unsigned long _co_running;		// 0x40
+	void* _co_final_ret_addr;		// 0x48
+
+
 } __attribute__((aligned(16)));
 
-extern asm_co_run(struct co_impl*, void*, co_func_t func);
+extern asm_co_run(struct co_impl*, void*);
 extern asm_co_yield(struct co_impl*);
 extern asm_co_resume(struct co_impl*);
 
@@ -78,6 +83,7 @@ co_t co_create(co_func_t func)
 	co->_co_func = func;
 	co->_co_stack_top = co - sizeof(struct _reg_context);
 	co->_co_stack_bottom = co_stack;
+	co->_co_resume_flag = 0;
 
 	printf("co_create: %p\n", co);
 	return co;
@@ -105,7 +111,6 @@ static void __co_run(struct _co_impl* coi, void* param)
 	printf("__co_run ret: [%p]\n", (coi->_co_func_ret_addr));
 
 	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_yield_ret_rsp));
-
 	asm volatile ("movq %0, %%rdi\n" : :"r" (coi));
 	asm volatile ("movq %0, %%rsi\n" : :"r" (param));
 
@@ -118,20 +123,9 @@ int co_run(co_t co, void* co_func_param)
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_run: invalid param");
 
-	asm volatile ("movq %%rbx, %0\n" :"=r" (coi->_co_run_rbx));
-	asm volatile ("movq %%rbp, %0\n" :"=r" (coi->_co_run_rbp));
-	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_run_rsp));
+	coi->_co_running = 1;
 
-	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_stack_top - 16));
-	__co_run(coi, co_func_param);
-
-	asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_run_rsp));
-	asm volatile ("movq %0, %%rbp\n" : :"r" (coi->_co_run_rbp));
-	asm volatile ("movq %0, %%rbx\n" : :"r" (coi->_co_run_rbx));
-
-//	printf("after co_yield rip: [%p]\n", coi->_co_func_ret_addr);
-//	printf("after co_run rsp: [%p]\n", coi->_co_run_rsp);
-//	printf("after co_run rbp: [%p]\n", coi->_co_run_rbp);
+	asm_co_run(coi, co_func_param);
 
 	return 0;
 error_ret:
@@ -141,39 +135,11 @@ error_ret:
 int co_yield(co_t co)
 {
 	unsigned long current_rsp;
-	printf("co_yield: %p\n", co);
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_yield: invalid param");
+	err_exit(!coi->_co_running, "co_yield: co is not running.");
 
-	asm volatile ("movq %%rax, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rax));
-	asm volatile ("movq %%rbx, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rbx));
-	asm volatile ("movq %%rcx, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rcx));
-	asm volatile ("movq %%rdx, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rdx));
-	asm volatile ("movq %%rsi, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rsi));
-	asm volatile ("movq %%rdi, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rdi));
-	asm volatile ("movq %%rsp, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rsp));
-	asm volatile ("movq %%rbp, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->rbp));
-	asm volatile ("movq %%r8, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r8));
-	asm volatile ("movq %%r9, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r9));
-	asm volatile ("movq %%r10, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r10));
-	asm volatile ("movq %%r11, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r11));
-	asm volatile ("movq %%r12, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r12));
-	asm volatile ("movq %%r13, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r13));
-	asm volatile ("movq %%r14, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r14));
-	asm volatile ("movq %%r15, %0\n" :"=r" (((struct _reg_context*)(coi->_co_stack_top))->r15));
-	asm volatile ("leaq 0x0(%%rip), %0\n" :"=r" (coi->_co_yield_addr));
-
-	if(!coi->_resume_flag)
-	{
-		asm volatile ("movq %0, %%rsp\n" : :"r" (coi->_co_yield_ret_rsp));
-		asm volatile ("jmpq %0\n" : :"r" (coi->_co_func_ret_addr));
-	}
-	else
-	{
-		coi->_resume_flag = 0;
-	}
-
-	return 0;
+	return asm_co_yield(coi);
 error_ret:
 	printf("co: %p\n", co);
 	return -1;
@@ -181,33 +147,11 @@ error_ret:
 
 int co_resume(co_t co)
 {
-	printf("co_resume: %p\n", co);
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_resume: invalid param");
+	err_exit(!coi->_co_running, "co_resume: co is not running.");
 
-
-	coi->_resume_flag = 1;
-
-	asm volatile ("movq %0, %%rax\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rax));
-	asm volatile ("movq %0, %%rbx\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rbx));
-	asm volatile ("movq %0, %%rcx\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rcx));
-	asm volatile ("movq %0, %%rdx\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rdx));
-	asm volatile ("movq %0, %%rsi\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rsi));
-	asm volatile ("movq %0, %%rdi\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rdi));
-	asm volatile ("movq %0, %%rsp\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rsp));
-	asm volatile ("movq %0, %%rbp\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->rbp));
-	asm volatile ("movq %0, %%r8\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r8));
-	asm volatile ("movq %0, %%r9\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r9));
-	asm volatile ("movq %0, %%r10\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r10));
-	asm volatile ("movq %0, %%r11\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r11));
-	asm volatile ("movq %0, %%r12\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r12));
-	asm volatile ("movq %0, %%r13\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r13));
-	asm volatile ("movq %0, %%r14\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r14));
-	asm volatile ("movq %0, %%r15\n" : :"r" (((struct _reg_context*)(coi->_co_stack_top))->r15));
-
-	asm volatile ("jmpq %0\n" : :"r" (coi->_co_yield_addr));
-
-	return 0;
+	return asm_co_resume(coi);
 error_ret:
 	return -1;
 }
