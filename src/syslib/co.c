@@ -52,8 +52,6 @@ extern asm_co_run(struct co_impl*, void*);
 extern asm_co_yield(struct co_impl*);
 extern asm_co_resume(struct co_impl*);
 
-static void __co_run(struct _co_impl* coi, void* param) __attribute__((noinline));
-
 static inline struct _co_impl* __conv_co(co_t co)
 {
 	struct _co_impl* coi = (struct _co_impl*)co;
@@ -101,20 +99,6 @@ void co_destroy(co_t co)
 
 error_ret:
 	return;
-}
-
-static void __co_run(struct _co_impl* coi, void* param)
-{
-	printf("__co_run: %p\n", coi);
-	coi->_co_func_ret_addr = __builtin_return_address(0);
-
-	printf("__co_run ret: [%p]\n", (coi->_co_func_ret_addr));
-
-	asm volatile ("movq %%rsp, %0\n" :"=r" (coi->_co_yield_ret_rsp));
-	asm volatile ("movq %0, %%rdi\n" : :"r" (coi));
-	asm volatile ("movq %0, %%rsi\n" : :"r" (param));
-
-	asm volatile ("call *(%0)\n" : :"r" (&coi->_co_func));
 }
 
 int co_run(co_t co, void* co_func_param)
