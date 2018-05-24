@@ -1523,7 +1523,7 @@ static void co_func(co_t co, void* param) __attribute__((noinline));
 
 static void co_func(co_t co, void* param)
 {
-	for(int i = 0; i < 10; ++i)
+	for(int i = 0; i < 1000; ++i)
 	{
 		printf("i = %d\n", i);
 
@@ -1548,7 +1548,7 @@ void test_co()
 	asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
 	printf("after run rsp: %p\n", rsp);
 
-	for(int j = 10; j < 20; ++j)
+	for(int j = 100; j < 200; ++j)
 	{
 		printf(">>> j = %d\n", j);
 
