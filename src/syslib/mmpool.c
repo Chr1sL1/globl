@@ -1,7 +1,7 @@
-#include "mmpool.h"
-#include "mmops.h"
-#include "dlist.h"
-#include "misc.h"
+#include "syslib/mmpool.h"
+#include "syslib/mmops.h"
+#include "syslib/dlist.h"
+#include "syslib/misc.h"
 #include <stdio.h>
 
 // absolutely not thread-safe.

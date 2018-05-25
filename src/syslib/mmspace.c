@@ -1,10 +1,10 @@
-#include "mmspace.h"
-#include "shmem.h"
-#include "dlist.h"
-#include "rbtree.h"
-#include "misc.h"
-#include "mmops.h"
-#include "hash.h"
+#include "syslib/mmspace.h"
+#include "syslib/shmem.h"
+#include "syslib/dlist.h"
+#include "syslib/rbtree.h"
+#include "syslib/misc.h"
+#include "syslib/mmops.h"
+#include "syslib/hash.h"
 
 #include <string.h>
 #include <stdlib.h>

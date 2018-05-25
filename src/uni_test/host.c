@@ -5,21 +5,20 @@
 #include <sys/time.h>
 #include <errno.h>
 
-#include "shmem.h"
-#include "rbtree.h"
-#include "dlist.h"
-#include "graph.h"
-#include "common.h"
-#include "utask.h"
-#include "misc.h"
-#include "mmpool.h"
-#include "pgpool.h"
-#include "ringbuf.h"
-#include "ipc.h"
-#include "mmspace.h"
-#include "net.h"
-#include "timer.h"
-#include "co.h"
+#include "syslib/shmem.h"
+#include "syslib/rbtree.h"
+#include "syslib/dlist.h"
+#include "syslib/graph.h"
+#include "syslib/common.h"
+#include "syslib/misc.h"
+#include "syslib/mmpool.h"
+#include "syslib/pgpool.h"
+#include "syslib/ringbuf.h"
+#include "syslib/ipc.h"
+#include "syslib/mmspace.h"
+#include "syslib/net.h"
+#include "syslib/timer.h"
+#include "syslib/co.h"
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
@@ -207,58 +206,6 @@ void test_lst(void)
 	printf("\n");
 }
 
-void tfun(utask_t t, void* p)
-{
-	int value = 0;
-
-	for(int i = 0; i < sizeof(test_arr) / sizeof(long); i++)
-	{
-		printf("arr[i] = %ld\n", test_arr[i]);
-
-		value = test_arr[i];
-
-		if(i % 2 == 0)
-			utsk_yield(t);
-
-		usleep(100);
-	}
-}
-
-void test_task(void)
-{
-	unsigned long r1 = 0, r2 = 0;
-	utask_t tsk = utsk_create(tfun);
-	if(!tsk) goto error_ret;
-
-	for(int i = 0; i < sizeof(test_arr) / sizeof(long); i++)
-	{
-		test_arr[i] = i;
-	}
-
-	r1 = rdtsc();
-	utsk_run(tsk, 0);
-	r2 = rdtsc();
-//	printf("runtask: %lu cycles.\n", r2 - r1);
-
-	for(int i = 0; i < sizeof(test_arr) / sizeof(long); i++)
-	{
-		printf("%ld\n", test_arr[i]);
-		if(i % 3 == 0)
-		{
-			r1 = rdtsc();
-			utsk_resume(tsk);
-			r2 = rdtsc();
-//			printf("resume: %lu cycles.\n", r2 - r1);
-		}
-
-		usleep(100);
-	}
-
-	utsk_destroy(tsk);
-
-error_ret:
-	return;
-}
 
 struct mem_test_entry
 {
@@ -1307,8 +1254,6 @@ void test_mm(void)
 	rslt = mm_cache_free(mmz, p);
 	if(rslt < 0) goto error_ret;
 
-	test_task();
-
 	for(long i = 0; i < count; i++)
 	{
 		rnd = 64 + random() % (1024 - 64);
@@ -1464,23 +1409,11 @@ void test_timer_func(void* p)
 }
 
 
-static void _task_func(utask_t task, void* param)
-{
-	for(int i = 0; i < 100; ++i)
-	{
-//		printf("%d\n", i);
-		utsk_yield(task);
-	}
-}
-
 static long __last_tm = 0;
 
 static void _test_task_timer(timer_handle_t t, void* p)
 {
-//	printf("on timer: %ld\n", dbg_current_tick() - __last_tm);
 	__last_tm = dbg_current_tick();
-	utask_t task = (utask_t*)p;
-	utsk_resume(task);
 }
 
 
@@ -1490,17 +1423,11 @@ void test_timer(void)
 	unsigned int max = (1 << 28);
 	unsigned long t1, t2, sum = 0;
 	unsigned total_count = 100000;
-	utask_t utask;
 
 	rslt = init_timer();
 	err_exit(rslt < 0, "init timer failed.");
 
-	utask = utsk_create(_task_func);
-	err_exit(!utask, "create task failed.");
-
-	add_timer(1000, _test_task_timer, 0, utask);
-
-	utsk_run(utask, NULL);
+	add_timer(1000, _test_task_timer, 0, 0);
 
 	for(int i = 0; i < 100000; ++i)
 	{
@@ -1582,7 +1509,6 @@ int main(void)
 
 //	net_test_server(1);
 
-//	test_task();
 //	test_timer();
 //	dd
 	test_co();
@@ -1630,7 +1556,6 @@ int main(void)
 //	
 //
 	printf("this seed: %lu\n", seed);
-//	test_task();
 //	test_lst();
 
 	return 0;

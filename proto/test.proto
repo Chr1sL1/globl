@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+enum __message_id
+{
+	test_message_id = 0x100;
+}
+
+message _test_struct
+{
+	required int32 ts1 = 1;
+	required int32 ts2 = 2;
+}
+
+
+message test_message
+{
+	required int32 value1 = 1;
+	required uint64 value2 = 2;
+	repeated _test_struct the_stru = 3;
+}
+

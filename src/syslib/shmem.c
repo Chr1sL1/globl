@@ -1,5 +1,5 @@
-#include "shmem.h"
-#include "misc.h"
+#include "syslib/shmem.h"
+#include "syslib/misc.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -66,7 +66,7 @@ struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try
 	if(key == IPC_PRIVATE || key <= 0 || size <= 0)
 		goto error_ret;
 
-	if((unsigned long)at_addr & (SHM_PAGE_SIZE - 1) != 0)
+	if(((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
 		goto error_ret;
 
 	flag |= IPC_CREAT;

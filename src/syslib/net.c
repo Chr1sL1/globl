@@ -1,8 +1,8 @@
-#include "net.h"
-#include "mmspace.h"
-#include "dlist.h"
-#include "rbtree.h"
-#include "misc.h"
+#include "syslib/net.h"
+#include "syslib/mmspace.h"
+#include "syslib/dlist.h"
+#include "syslib/rbtree.h"
+#include "syslib/misc.h"
 
 #ifdef __linux__
 #define _GNU_SOURCE

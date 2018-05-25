@@ -1,8 +1,8 @@
-#include "pgpool.h"
-#include "mmops.h"
-#include "dlist.h"
-#include "misc.h"
-#include "rbtree.h"
+#include "syslib/pgpool.h"
+#include "syslib/mmops.h"
+#include "syslib/dlist.h"
+#include "syslib/misc.h"
+#include "syslib/rbtree.h"
 #include <stdio.h>
 
 //#define PG_SIZE			(4096)

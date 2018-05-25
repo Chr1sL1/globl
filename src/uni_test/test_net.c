@@ -1,6 +1,6 @@
-#include "net.h"
-#include "mmspace.h"
-#include "misc.h"
+#include "syslib/net.h"
+#include "syslib/mmspace.h"
+#include "syslib/misc.h"
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -1,4 +1,4 @@
-#include "mmops.h"
+#include "syslib/mmops.h"
 
 
 #define SHM_TYPE_SHIFT (28)

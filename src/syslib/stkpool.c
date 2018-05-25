@@ -1,7 +1,8 @@
-#include "stkpool.h"
-#include "mmops.h"
-#include "misc.h"
-#include "dlist.h"
+#include "syslib/stkpool.h"
+#include "syslib/mmops.h"
+#include "syslib/misc.h"
+#include "syslib/dlist.h"
+
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -149,7 +150,7 @@ struct stkpool* stkp_create(void* addr, struct mm_config* cfg)
 {
 	struct _stkp_impl* stkpi;
 
-	err_exit((!addr || (unsigned long)addr & 7 != 0), "address must be 8-byte aligned.");
+	err_exit((!addr || ((unsigned long)addr & 7) != 0), "address must be 8-byte aligned.");
 	err_exit(cfg->stk_frm_size < MIN_STK_SIZE, "stack frame size must be >= %lu", MIN_STK_SIZE);
 
 	stkpi = _stkp_init(addr, cfg->total_size, cfg->stk_frm_size);
@@ -164,7 +165,7 @@ error_ret:
 struct stkpool* stkp_load(void* addr)
 {
 	struct _stkp_impl* stkpi;
-	err_exit((!addr || (unsigned long)addr & 7 != 0), "invalid argument: address must be 8-byte aligned.");
+	err_exit((!addr || ((unsigned long)addr & 7) != 0), "invalid argument: address must be 8-byte aligned.");
 
 	stkpi = (struct _stkp_impl*)addr;
 	err_exit(stkpi->_stkp_tag != STKP_TAG, "invalid address.");

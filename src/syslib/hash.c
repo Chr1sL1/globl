@@ -1,4 +1,4 @@
-#include "hash.h"
+#include "syslib/hash.h"
 #include <string.h>
 
 unsigned long _hash_value(const char* key, unsigned long bucket_size)

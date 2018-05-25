@@ -1,6 +1,6 @@
-#include "co.h"
-#include "mmspace.h"
-#include "misc.h"
+#include "syslib/co.h"
+#include "syslib/mmspace.h"
+#include "syslib/misc.h"
 #include <stdio.h>
 
 #define CO_MAGIC_NUM	(0x6677667788558855)
@@ -48,9 +48,9 @@ struct _co_impl
 
 } __attribute__((aligned(16)));
 
-extern asm_co_run(struct co_impl*, void*);
-extern asm_co_yield(struct co_impl*);
-extern asm_co_resume(struct co_impl*);
+extern int asm_co_run(struct _co_impl*, void*);
+extern int asm_co_yield(struct _co_impl*);
+extern int asm_co_resume(struct _co_impl*);
 
 static inline struct _co_impl* __conv_co(co_t co)
 {

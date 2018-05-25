@@ -1,7 +1,7 @@
-#include "timer.h"
-#include "dlist.h"
-#include "misc.h"
-#include "mmspace.h"
+#include "syslib/timer.h"
+#include "syslib/dlist.h"
+#include "syslib/misc.h"
+#include "syslib/mmspace.h"
 #include <stdio.h>
 
 
