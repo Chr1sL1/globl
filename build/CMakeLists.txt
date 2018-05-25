@@ -29,6 +29,9 @@ SUB_DIR_LIST(sub_dirs ${CMAKE_SOURCE_DIR})
 
 include_directories(${CMAKE_SOURCE_DIR}/../inc)
 include_directories(${CMAKE_SOURCE_DIR}/../inc/proto)
+include_directories(${CMAKE_SOURCE_DIR}/../3rd/inc)
+
+link_directories(${CMAKE_SOURCE_DIR}/../3rd/lib)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=gnu11 -Wint-to-pointer-cast -Wpointer-to-int-cast -fPIC")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -finline-functions")

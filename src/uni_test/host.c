@@ -19,6 +19,12 @@
 #include "syslib/net.h"
 #include "syslib/timer.h"
 #include "syslib/co.h"
+
+#include "test.pb.h"
+#include "pb_encode.h"
+#include "pb_decode.h"
+
+
 #include <signal.h>
 #include <unistd.h>
 #include <string.h>
@@ -1489,6 +1495,25 @@ error_ret:
 	return;
 }
 
+void test_pb()
+{
+	unsigned char buffer[128];
+
+	test_message msg = test_message_init_zero;
+	msg.value1 = 100;
+	msg.value2 = 3463;
+
+	pb_ostream_t ostream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+	pb_encode(&ostream, test_message_fields, &msg);
+
+	pb_istream_t istream = pb_istream_from_buffer(buffer, ostream.bytes_written);
+
+	pb_decode(&istream, test_message_fields, &msg);
+
+	printf(">>>>>> >>>>>>   msg.value1: %d, msg.value2: %d\n", msg.value1, msg.value2);
+}
+
+
 int main(void)
 {
 	long rslt;
@@ -1504,6 +1529,8 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
+	test_pb();
+
 	rslt = init_mm(207);
 	if(rslt < 0) goto error_ret;
 
@@ -1511,7 +1538,7 @@ int main(void)
 
 //	test_timer();
 //	dd
-	test_co();
+//	test_co();
 
 	mm_uninitialize();
 

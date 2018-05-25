@@ -1,5 +1,5 @@
 set(proto_dir ${CMAKE_SOURCE_DIR}/../proto)
-set(proto_tool_dir ${CMAKE_SOURCE_DIR}/../3rd/nanopb/generator-bin)
+set(proto_tool_dir ${CMAKE_SOURCE_DIR}/../tools/nanopb/generator-bin)
 set(proto_inc_dir ${CMAKE_SOURCE_DIR}/../inc/proto)
 set(proto_src_dir ${CMAKE_SOURCE_DIR}/../src/proto)
 
