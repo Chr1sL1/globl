@@ -9,5 +9,6 @@ message test_message
 {
 	required int32 value1 = 1;
 	required uint64 value2 = 2;
+	repeated int32 value_arr = 3;
 }
 

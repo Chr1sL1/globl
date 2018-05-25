@@ -1510,7 +1510,7 @@ void test_pb()
 
 	pb_decode(&istream, test_message_fields, &msg);
 
-	printf(">>>>>> >>>>>>   msg.value1: %d, msg.value2: %d\n", msg.value1, msg.value2);
+	printf(">>>>>> >>>>>>   msg.value1: %d, msg.value2: %ld\n", msg.value1, msg.value2);
 }
 
 
