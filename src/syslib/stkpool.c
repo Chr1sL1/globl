@@ -167,8 +167,9 @@ struct stkpool* stkp_load(void* addr)
 	struct _stkp_impl* stkpi;
 	err_exit((!addr || ((unsigned long)addr & 7) != 0), "invalid argument: address must be 8-byte aligned.");
 
-	stkpi = (struct _stkp_impl*)addr;
-	err_exit(stkpi->_stkp_tag != STKP_TAG, "invalid address.");
+	stkpi = _conv_impl((struct stkpool*)addr);
+
+	err_exit(stkpi->_stkp_tag != STKP_TAG, "invalid address, stkpi: %p.", stkpi);
 
 	return &stkpi->_the_pool;
 error_ret:

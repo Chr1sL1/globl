@@ -6,7 +6,7 @@ typedef void(*timer_func_t)(timer_handle_t, void*);
 
 int init_timer(void);
 
-timer_handle_t add_timer(unsigned int delay_tick, timer_func_t callback_func, int run_once, void* param);
+timer_handle_t timer_schedule(unsigned int delay_tick, timer_func_t callback_func, int run_once, void* param);
 
 void del_timer(timer_handle_t the_timer);
 

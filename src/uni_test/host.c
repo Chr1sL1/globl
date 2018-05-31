@@ -1529,16 +1529,16 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
-	test_pb();
+//	test_pb();
 
-	rslt = init_mm(207);
+	rslt = init_mm(217);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);
 
 //	test_timer();
 //	dd
-//	test_co();
+	test_co();
 
 	mm_uninitialize();
 

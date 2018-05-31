@@ -565,6 +565,7 @@ static long _mm_create_section(struct _mm_space_impl* mm, int ar_type)
 
 	sec->_allocator = (*__mm_area_ops[ar_type]->create_func)(addr_begin + sizeof(struct _mm_section_impl), &mm->_cfg.mm_cfg[ar_type]);
 	err_exit(!sec->_allocator, "shmm create allocator error.");
+	printf("created allocator: %p, type[%d].\n", sec->_allocator, ar_type);
 
 	ar->_free_section = sec;
 

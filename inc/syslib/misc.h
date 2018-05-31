@@ -1,10 +1,12 @@
 #ifndef __misc_h__
 #define __misc_h__
 
+#define likely(x)		__builtin_expect(!!(x), 1)
+#define unlikely(x)		__builtin_expect(!!(x), 0)
 
 #define err_exit(stmt, msg, ...)\
 	do {\
-		if(stmt){\
+		if(unlikely(stmt)){\
 			fprintf(stderr, "<%s:%d> ", __FILE__, __LINE__);\
 			fprintf(stderr, msg, ##__VA_ARGS__);\
 			fprintf(stderr, "\n");\
