@@ -44,6 +44,8 @@ char* zone_buf;
 
 long running = 0;
 
+int is_reloaded = 0;
+
 void swap(long* a, long* b)
 {
 	long tmp = *a;
@@ -1369,6 +1371,9 @@ long init_mm(int key)
 	rslt = mm_initialize(&cfg);
 	if(rslt < 0) goto error_ret;
 
+	if(rslt == MM_RESULT_RELOADED)
+		is_reloaded = 1;
+
 	return 0;
 error_ret:
 	perror(strerror(errno));
@@ -1452,44 +1457,71 @@ struct test_stru
 	unsigned long t3;
 } __attribute__((aligned(16)));
 
+struct test_co_struct
+{
+	co_t _co;
+	int i;
+	int j;
+};
+
 static void co_func(co_t co, void* param) __attribute__((noinline));
 
 static void co_func(co_t co, void* param)
 {
-	for(int i = 0; i < 1000; ++i)
-	{
-		printf("i = %d\n", i);
+	struct test_co_struct* ts = (struct test_co_struct*)param;
 
-		if(i % 4 == 0)
+	for(; ts->i < 1000; ++ts->i)
+	{
+		printf("i = %d\n", ts->i);
+
+		if(ts->i % 4 == 0)
 		{
 			co_yield(co);
+			sleep(1);
 		}
 	}
 }
 
 void test_co()
 {
+	struct test_co_struct* ts;
 	void* rsp = 0;
-	co_t co = co_create(co_func);
-	err_exit(!co, "failed.");
 
-	asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
-	printf("before run rsp: %p\n", rsp);
-
-	co_run(co, 0);
-
-	asm volatile ("movq %%rsp, %0\n" :"=r" (rsp));
-	printf("after run rsp: %p\n", rsp);
-
-	for(int j = 100; j < 200; ++j)
+	if(!is_reloaded)
 	{
-		printf(">>> j = %d\n", j);
+		printf("---- test_co: new alloc.\n");
+		ts = mm_area_alloc(sizeof(struct test_co_struct), MM_AREA_PERSIS);
+		err_exit(!ts, "ts failed.");
 
-		if(j % 2 == 0)
+		ts->_co = co_create(co_func);
+		err_exit(!ts->_co, "failed.");
+
+		mm_save_globl_data(ts);
+
+		ts->i = 0;
+		ts->j = 100;
+	}
+	else
+	{
+		printf("---- test_co: reloaded.\n");
+		ts = mm_load_globl_data();
+	}
+
+	co_run(ts->_co, ts);
+
+	for(; ts->j < 200; ++ts->j)
+	{
+		printf(">>> j = %d\n", ts->j);
+
+		if(ts->j % 2 == 0)
 		{
-			co_resume(co);
+			co_resume(ts->_co);
+			sleep(1);
 		}
 	}
+
+	co_destroy(ts->_co);
+	mm_free(ts);
 
 error_ret:
 	return;
@@ -1531,7 +1563,7 @@ int main(void)
 
 //	test_pb();
 
-	rslt = init_mm(217);
+	rslt = init_mm(218);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

@@ -42,6 +42,13 @@ enum MM_AREA_TYPE
 	MM_AREA_COUNT,
 };
 
+enum MM_INIT_RESULT
+{
+	MM_RESULT_FAILED = -1,
+	MM_RESULT_NEW = 0,
+	MM_RESULT_RELOADED = 1,
+};
+
 struct mm_space_config
 {
 	unsigned long sys_begin_addr;

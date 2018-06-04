@@ -615,6 +615,7 @@ long mm_initialize(struct mm_space_config* cfg)
 
 		rb_reset_compare_function(&mm->_all_section_tree, _shmm_comp_func);
 
+		rslt = MM_RESULT_RELOADED;
 		goto succ_ret;
 	}
 
@@ -651,12 +652,14 @@ long mm_initialize(struct mm_space_config* cfg)
 		if(rslt < 0) goto error_ret;
 	}
 
+	rslt = MM_RESULT_NEW;
+
 succ_ret:
 	__the_mmspace = mm;
-	return 0;
+	return rslt;
 error_ret:
 	mm_uninitialize();
-	return -1;
+	return MM_RESULT_FAILED;
 }
 
 long mm_reinitialize(struct mm_space_config* cfg)
