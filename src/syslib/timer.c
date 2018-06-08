@@ -143,7 +143,7 @@ static inline void _add_timer(struct timer_node* tn)
 }
 
 
-timer_handle_t add_timer(unsigned int delay_tick, timer_func_t callback_func, int rune_once, void* param)
+timer_handle_t timer_schedule(unsigned int delay_tick, timer_func_t callback_func, int rune_once, void* param)
 {
 	struct timer_node* _node = NULL;
 

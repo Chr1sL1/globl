@@ -921,53 +921,6 @@ unsigned int at2t(unsigned v)
 //	return ret;
 //}
 
-long test_mmcpy(void)
-{
-	unsigned long r1 = 0, r2 = 0;
-	long rslt = 0;
-	long len = random() % 10000000 + 10000000;
-
-
-	char* src = malloc(len);
-	char* dst = malloc(len);
-
-	printf("test string len: %ld.\n", len);
-
-	for(long i = 0; i < len; ++i)
-	{
-		src[i] = alpha_beta[random() % strlen(alpha_beta)];
-	}
-	src[len - 1] = 0;
-
-	r1 = rdtsc();
-	rslt = memcpy(dst, src, len);
-	r2 = rdtsc();
-	printf("memcpy cycle: %lu.\n", r2 - r1);
-
-	r1 = rdtsc();
-	rslt = quick_mmcpy(dst, src, len);
-	r2 = rdtsc();
-
-//	printf("src: [%s]\n", src);
-//	printf("dst: [%s]\n", dst);
-
-	for(long i = 0; i < len; ++i)
-	{
-		if(dst[i] != src[i])
-		{
-			printf("mmcpy error @%ld.\n", i);
-			break;
-		}
-	}
-
-	printf("quick_mmcpy cycle: %lu.\n", r2 - r1);
-
-
-	free(dst);
-	free(src);
-	return rslt;
-}
-
 
 long test_qqq(long a, long b, long c)
 {
@@ -1438,7 +1391,7 @@ void test_timer(void)
 	rslt = init_timer();
 	err_exit(rslt < 0, "init timer failed.");
 
-	add_timer(1000, _test_task_timer, 0, 0);
+	timer_schedule(1000, _test_task_timer, 0, 0);
 
 	for(int i = 0; i < 100000; ++i)
 	{
@@ -1569,7 +1522,7 @@ int main(void)
 //	net_test_server(1);
 
 //	test_timer();
-//	dd
+//
 	test_co();
 
 	mm_uninitialize();
