@@ -25,16 +25,13 @@ struct _mm_section_impl
 	int _padding;
 
 	void* _allocator;
-
-}__attribute__((aligned(8)));
+};
 
 struct _mm_area_impl
 {
 	struct dlist _section_list;
 	struct _mm_section_impl* _free_section;
-
-}__attribute__((aligned(8)));
-
+};
 
 struct _mm_shmm_save
 {
@@ -42,7 +39,7 @@ struct _mm_shmm_save
 	int _key;
 	int _size;
 
-}__attribute__((aligned(8)));
+};
 
 struct _mm_space_impl
 {
@@ -60,13 +57,13 @@ struct _mm_space_impl
 	struct hash_table _zone_hash;
 	void* _usr_globl;
 
-}__attribute__((aligned(8)));
+};
 
 struct _mmcache_impl
 {
 	struct mmcache _the_zone;
-	unsigned long _cache_size;
-	unsigned long _obj_aligned_size;
+	unsigned int _cache_size;
+	unsigned int _obj_aligned_size;
 
 	mmcache_obj_ctor _obj_ctor;
 	mmcache_obj_dtor _obj_dtor;
