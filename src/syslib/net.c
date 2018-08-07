@@ -243,9 +243,11 @@ static inline struct _poll_obj* _conv_poll_obj_rbn(struct rbnode* rbn)
 static inline void _sei_free_buf(struct _ses_impl* sei)
 {
 	if(sei->_recv_buf)
-		mm_free(sei->_recv_buf);
+//		mm_free(sei->_recv_buf);
+		free(sei->_recv_buf);
 	if(sei->_send_buf)
-		mm_free(sei->_send_buf);
+//		mm_free(sei->_send_buf);
+		free(sei->_send_buf);
 
 	sei->_recv_buf = 0;
 	sei->_send_buf = 0;
@@ -634,10 +636,12 @@ static struct _ses_impl* _net_create_session(struct _inet_impl* inet, int socket
 	sei->_recv_buf_len = inet->_the_net.cfg.recv_buff_len;
 	sei->_send_buf_len = inet->_the_net.cfg.send_buff_len;
 
-	sei->_recv_buf = mm_alloc(sei->_recv_buf_len);
+//	sei->_recv_buf = mm_alloc(sei->_recv_buf_len);
+	sei->_recv_buf = malloc(sei->_recv_buf_len);
 	err_exit(!sei->_recv_buf, "_net_create_session alloc recv buff error.");
 
-	sei->_send_buf = mm_alloc(sei->_send_buf_len);
+//	sei->_send_buf = mm_alloc(sei->_send_buf_len);
+	sei->_send_buf = malloc(sei->_send_buf_len);
 	err_exit(!sei->_send_buf, "_net_create_session alloc send buff error.");
 
 	sei->_state = _SES_ESTABLISHING;
