@@ -1508,6 +1508,8 @@ int main(void)
 	unsigned long seed = time(0);
 	srandom(seed);
 
+	printf("popcnt: %d\n", popcnt32(129));
+
 	printf("test_stru: %ld\n", sizeof(struct test_stru));
 
 	struct bit_set bs;

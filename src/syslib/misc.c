@@ -29,32 +29,43 @@ error_ret:
 	return -1;
 }
 
-unsigned long round_up_2power(unsigned long val)
+inline unsigned long round_up_2power(unsigned long val)
 {
 	return 1 << (log_2(val - 1) + 1);
 }
 
-unsigned long round_down_2power(unsigned long val)
+inline unsigned long round_down_2power(unsigned long val)
 {
 	return 1 << (log_2(val));
 }
 
-long is_2power(unsigned long val)
+inline long is_2power(unsigned long val)
 {
 	return round_up_2power(val) == round_down_2power(val);
 }
 
-unsigned long rdtsc(void)
+inline unsigned long rdtsc(void)
 {
-	unsigned long th, tl;
+	union __U
+	{
+		struct
+		{
+			unsigned int tl;
+			unsigned int th;
+		};
 
-	asm volatile ("rdtsc":"=a"(tl),"=d"(th));
+		unsigned long result;
+	};
 
-	return (th << 32) + tl;
+	union __U u;
+
+	asm volatile ("rdtsc":"=a"(u.tl),"=d"(u.th));
+
+	return u.result;
 }
 
 
-unsigned long log_2(unsigned long val)
+inline unsigned long log_2(unsigned long val)
 {
 	unsigned long ret;
 	asm("bsrq	%1, %0":"=r"(ret):"r"(val));
@@ -100,6 +111,13 @@ inline long bsr(unsigned long val)
 	if(val != 0)
 		asm("bsrq %1, %0":"=r"(ret):"r"(val));
 
+	return ret;
+}
+
+int popcnt32(unsigned int val)
+{
+	int ret;
+	asm volatile("popcnt %1, %0" : "=r"(ret) : "r"(val));
 	return ret;
 }
 

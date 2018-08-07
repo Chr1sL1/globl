@@ -31,6 +31,8 @@ unsigned long round_down(unsigned long val, unsigned long boundary);
 long bsf(unsigned long val);
 long bsr(unsigned long val);
 
+int popcnt32(unsigned int val);
+
 long quick_mmcpy_a(void* dst, void* src, unsigned long size);
 long quick_mmcpy_u(void* dst, void* src, unsigned long size);
 long quick_mmcpy(void* dst, void* src, unsigned long size);
