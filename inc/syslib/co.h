@@ -3,15 +3,16 @@
 
 #include "slist.h"
 
-typedef void* co_t;
-typedef void (*co_func_t)(co_t, void*);
+struct co_task;
 
-co_t co_create(co_func_t func);
-void co_destroy(co_t co);
+typedef void (*co_func_t)(struct co_task*, void*);
 
-int co_run(co_t co, void* co_func_param);
-int co_yield(co_t co);
-int co_resume(co_t co);
+struct co_task* co_create(co_func_t func);
+void co_destroy(struct co_task* co);
+
+int co_run(struct co_task* co, void* co_func_param);
+int co_yield(struct co_task* co);
+int co_resume(struct co_task* co);
 
 struct co_holder
 {
@@ -19,8 +20,8 @@ struct co_holder
 };
 
 int init_co_holder(struct co_holder* ch);
-int push_co(struct co_holder* ch, co_t co);
-co_t pop_co(struct co_holder* ch);
+int push_co(struct co_holder* ch, struct co_task* co);
+struct co_task* pop_co(struct co_holder* ch);
 int free_all_co(struct co_holder* ch);
 
 #endif

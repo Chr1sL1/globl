@@ -1412,14 +1412,14 @@ struct test_stru
 
 struct test_co_struct
 {
-	co_t _co;
+	struct co_task* _co;
 	int i;
 	int j;
 };
 
-static void co_func(co_t co, void* param) __attribute__((noinline));
+static void co_func(struct co_task* co, void* param);
 
-static void co_func(co_t co, void* param)
+static void co_func(struct co_task* co, void* param)
 {
 	struct test_co_struct* ts = (struct test_co_struct*)param;
 
@@ -1518,7 +1518,7 @@ int main(void)
 
 //	test_pb();
 
-	rslt = init_mm(219);
+	rslt = init_mm(222);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);
