@@ -15,21 +15,21 @@ asm_co_run:
 	movq	%rax, 0x28(%rbx)
 
 .co_run_lea_pt:
-	movq	0x38(%rbx), %rax
-	testq	%rax, %rax
+	movb	0x09(%rbx), %al
+	testb	%al, %al
 	jne		.co_run_return
 
-	movq	8(%rbx), %rcx
+	movq	0x18(%rbx), %rcx		# _co_func
 	callq	*%rcx
 
-	movq	$0x0, 0x40(%rbx)
-	movq	0x30(%rbx), %rax
-	testq	%rax, %rax
+	movb	$0x0, 0x0A(%rbx)
+	movb	0x08(%rbx), %al
+	testb	%al, %al
 	jne		.co_run_back_to_resume_pos
 
 .co_run_return:
 
-	movq	$0x0, 0x38(%rbx)
+	movb	$0x0, 0x09(%rbx)
 	movq	0x20(%rbx), %rsp			# recover rsp
 	popq	%rbx
 	popq	%rbp
@@ -37,8 +37,8 @@ asm_co_run:
 
 .co_run_back_to_resume_pos:
 	movq	0x20(%rbx), %rsp			# recover rsp
-	movq	0x48(%rbx), %rax
-	movq	$0x01, 0x38(%rbx)
+	movq	0x30(%rbx), %rax
+	movb	$0x01, 0x09(%rbx)
 	jmpq	*%rax
 
 	.cfi_endproc

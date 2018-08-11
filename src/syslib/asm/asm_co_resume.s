@@ -11,8 +11,8 @@ asm_co_resume:
 	movq	%rsp, 0x20(%rbx)
 
 	movq    0x10(%rbx),%rax
-	movq	$0x1, 0x30(%rbx)
-	movq	$0x0, 0x38(%rbx)
+	movb	$0x1, 0x08(%rbx)
+	movb	$0x0, 0x09(%rbx)	# _co_jump_flag
 	                       
 	movq    (%rax),%rdx
 	movq    %rdx,%rax
@@ -48,17 +48,17 @@ asm_co_resume:
 	movq    %rax,%r15
 
 	leaq	.co_resume_lea_pt, %rax
-	movq	%rax, 0x48(%rbx)
+	movq	%rax, 0x30(%rbx)
 
 .co_resume_lea_pt:
-	movq	0x38(%rbx), %rdx
+	movb	0x09(%rbx), %dl
 	testq	%rdx, %rdx
 	jne		.co_resume_return
 
 	movq	0x28(%rbx), %rcx
 	movq	%rax, 0x28(%rbx)
 
-	movq	$0x01, 0x38(%rbx)
+	movb	$0x01, 0x09(%rbx)
 	jmpq	*%rcx			# rcx: .co_yield_resume_pos
 
 .co_resume_return:

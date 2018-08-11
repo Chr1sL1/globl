@@ -60,15 +60,15 @@ asm_co_yield:
 	movq    %r15,%rdx
 	movq    %rdx,0x78(%rax)
 
-	movq	0x38(%rbx), %rax
-	testq	%rax, %rax
+	movb	0x09(%rbx), %al
+	testb	%al, %al
 	jne		.co_yield_resume_pos
 
 	movq	0x28(%rbx), %rax
 
 	leaq	.co_yield_resume_pos, %rdx
 	movq	%rdx, 0x28(%rbx)
-	movq	$0x01, 0x38(%rbx)
+	movb	$0x01, 0x09(%rbx)
 
 	movq	0x20(%rbx), %rsp
 
@@ -77,7 +77,7 @@ asm_co_yield:
 	jmpq	*%rax
 
 .co_yield_resume_pos:
-	movq	$0x0, 0x38(%rbx)
+	movb	$0x0, 0x09(%rbx)
 	popq	%rbx
 	popq	%rbp
 	retq

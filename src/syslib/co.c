@@ -1,7 +1,8 @@
+#include <stdio.h>
+
 #include "syslib/co.h"
 #include "syslib/mmspace.h"
 #include "syslib/misc.h"
-#include <stdio.h>
 
 #define CO_MAGIC_NUM	(0x6677667788558855)
 #define CO_ZONE_NAME	"sys_co_zone"
@@ -28,25 +29,73 @@ struct _reg_context
 	unsigned long r15;
 } __attribute__((aligned(16)));
 
+//struct _co_impl_ex
+//{
+//	unsigned long _magic_num;		// 0x0
+//	co_func_t _co_func;				// 0x08
+//
+//	void* _co_stack_top;			// 0x10
+//	void* _co_stack_bottom;			// 0x18
+//
+//	void* _co_yield_ret_rsp;		// 0x20
+//	void* _co_func_ret_addr;		// 0x28
+//
+//	unsigned long _co_resume_flag;	// 0x30
+//	unsigned long _co_jump_flag;	// 0x38
+//
+//	unsigned long _co_running;		// 0x40
+//	void* _co_final_ret_addr;		// 0x48
+//
+//	/*****************************************/
+//
+//	struct slnode _list_node;
+//
+//} __attribute__((aligned(16)));
+
 struct _co_impl
 {
 	unsigned long _magic_num;		// 0x0
-	co_func_t _co_func;				// 0x08
+	unsigned char _co_resume_flag;	// 0x08
+	unsigned char _co_jump_flag;	// 0x09
+	unsigned char _co_running;		// 0x0A
+	unsigned char _co_reserve[5];	// 0x0B ~ 0x0F
 
 	void* _co_stack_top;			// 0x10
-	void* _co_stack_bottom;			// 0x18
-
+	co_func_t _co_func;				// 0x18
 	void* _co_yield_ret_rsp;		// 0x20
 	void* _co_func_ret_addr;		// 0x28
+	void* _co_final_ret_addr;		// 0x30
+	void* _co_stack_bottom;			// 0x38
 
-	unsigned long _co_resume_flag;	// 0x30
-	unsigned long _co_jump_flag;	// 0x38
+	/*****************************************/
 
-	unsigned long _co_running;		// 0x40
-	void* _co_final_ret_addr;		// 0x48
+	struct slnode _list_node;
+
+} __attribute__((aligned(64)));
 
 
-} __attribute__((aligned(16)));
+
+/*************************************************
+ *			memory layout:
+ *			----------------- <---- high mem
+ *			|				|
+ *			|	_co_impl	|
+ *			|				|
+ *			-----------------
+ *			|				|
+ *			| _reg_context	|
+ *			|				|
+ *			-----------------
+ *			|				|
+ *			|				|
+ *			|				|
+ *			|  co stack		|
+ *			|				|
+ *			|				|
+ *			|				|
+ *			----------------- <---- low mem
+ *
+ * ***********************************************/
 
 extern int asm_co_run(struct _co_impl*, void*);
 extern int asm_co_yield(struct _co_impl*);
@@ -60,6 +109,11 @@ static inline struct _co_impl* __conv_co(co_t co)
 	return coi;
 error_ret:
 	return 0;
+}
+
+static inline struct _co_impl* __conv_co_from_slnode(struct slnode* node)
+{
+	return (struct _co_impl*)((unsigned long)node - (unsigned long)&(((struct _co_impl*)(0))->_list_node));
 }
 
 co_t co_create(co_func_t func)
@@ -118,7 +172,6 @@ error_ret:
 
 int co_yield(co_t co)
 {
-	unsigned long current_rsp;
 	struct _co_impl* coi = __conv_co(co);
 	err_exit(!coi, "co_yield: invalid param");
 	err_exit(!coi->_co_running, "co_yield: co is not running.");
@@ -139,3 +192,43 @@ int co_resume(co_t co)
 error_ret:
 	return -1;
 }
+
+
+int init_co_holder(struct co_holder* ch)
+{
+	sl_init(&ch->_co_list);
+	return 0;
+error_ret:
+	return -1;
+}
+
+int push_co(struct co_holder* ch, co_t co)
+{
+	struct _co_impl* coi = __conv_co(co);
+	err_exit(!coi, "co_yield: invalid param");
+
+	coi->_list_node._next = 0;
+
+	sl_push_head(&ch->_co_list, &coi->_list_node);
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+co_t pop_co(struct co_holder* ch)
+{
+
+error_ret:
+	return 0;
+}
+
+int free_all_co(struct co_holder* ch)
+{
+
+error_ret:
+	return -1;
+}
+
+
+

@@ -1469,7 +1469,7 @@ void test_co()
 		if(ts->j % 2 == 0)
 		{
 			co_resume(ts->_co);
-			sleep(1);
+//			sleep(1);
 		}
 	}
 
@@ -1508,7 +1508,7 @@ int main(void)
 	unsigned long seed = time(0);
 	srandom(seed);
 
-	printf("popcnt: %d\n", popcnt32(129));
+	printf("popcnt: %d\n", popcnt32(-1));
 
 	printf("test_stru: %ld\n", sizeof(struct test_stru));
 
@@ -1518,7 +1518,7 @@ int main(void)
 
 //	test_pb();
 
-	rslt = init_mm(218);
+	rslt = init_mm(219);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);
