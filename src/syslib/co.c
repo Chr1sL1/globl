@@ -170,7 +170,6 @@ error_ret:
 	return -1;
 }
 
-
 int init_co_holder(struct co_holder* ch)
 {
 	sl_init(&ch->_co_list);

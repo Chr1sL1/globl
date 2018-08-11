@@ -14,49 +14,34 @@ asm_co_yield:
 	movq    0x10(%rbx),%rax
 	movq    %rax,%rdx
 	movq    %rdx,(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %rbx,%rdx
 	movq    %rdx,0x8(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %rcx,%rdx
 	movq    %rdx,0x10(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %rdx,%rdx
 	movq    %rdx,0x18(%rax)
-	movq    0x10(%rbx),%rax
-	movq    %rsi,%rdx
-	movq    %rdx,0x28(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %rdi,%rdx
 	movq    %rdx,0x20(%rax)
-	movq    0x10(%rbx),%rax
-	movq    %rsp,%rdx
-	movq    %rdx,0x38(%rax)
-	movq    0x10(%rbx),%rax
+	movq    %rsi,%rdx
+	movq    %rdx,0x28(%rax)
 	movq    %rbp,%rdx
 	movq    %rdx,0x30(%rax)
-	movq    0x10(%rbx),%rax
+	movq    %rsp,%rdx
+	movq    %rdx,0x38(%rax)
 	movq    %r8,%rdx
 	movq    %rdx,0x40(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r9,%rdx
 	movq    %rdx,0x48(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r10,%rdx
 	movq    %rdx,0x50(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r11,%rdx
 	movq    %rdx,0x58(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r12,%rdx
 	movq    %rdx,0x60(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r13,%rdx
 	movq    %rdx,0x68(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r14,%rdx
 	movq    %rdx,0x70(%rax)
-	movq    0x10(%rbx),%rax
 	movq    %r15,%rdx
 	movq    %rdx,0x78(%rax)
 
