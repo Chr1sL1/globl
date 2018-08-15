@@ -44,6 +44,9 @@ struct co_task
 	void* _co_final_ret_addr;		// 0x30
 	void* _co_stack_bottom;			// 0x38
 
+	unsigned long _rdtsc_yield;		// 0x40
+	unsigned long _rdtsc_resume;	// 0x48	
+
 	/*****************************************/
 
 	struct slnode _list_node;
@@ -168,6 +171,17 @@ int co_resume(struct co_task* co)
 	return asm_co_resume(coi);
 error_ret:
 	return -1;
+}
+
+
+unsigned long co_profile_yield(struct co_task* co)
+{
+	return co->_rdtsc_yield;
+}
+
+unsigned long co_profile_resume(struct co_task* co)
+{
+	return co->_rdtsc_resume;
 }
 
 int init_co_holder(struct co_holder* ch)

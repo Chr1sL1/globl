@@ -57,7 +57,7 @@ error_ret:
 
 struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try_huge_page)
 {
-	int flag = 0;
+	int flag;
 	int fd;
 	void* ret_addr = 0;
 	void* addr_begin;
@@ -69,12 +69,8 @@ struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try
 	if(((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
 		goto error_ret;
 
-	flag |= IPC_CREAT;
-	flag |= IPC_EXCL;
-	flag |= SHM_R;
-	flag |= SHM_W;
-	flag |= S_IRUSR;
-	flag |= S_IWUSR;
+__shmm_create_remap:	
+	flag = 0;
 
 #ifdef __linux__
 	if(try_huge_page)
@@ -82,19 +78,31 @@ struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try
 		if(size > SHMM_MID_PAGE_THRESHOLD)
 		{
 			flag |= SHM_HUGETLB;
-			if(size <= SHMM_HUGE_PAGE_THRESHOLD)
-				flag |= SHM_HUGE_2MB;
-			else
-				flag |= SHM_HUGE_1GB;
+			printf("huge page used by key: 0x%x.\n", key);
 		}
 	}
 #endif
+
+	flag |= IPC_CREAT;
+	flag |= IPC_EXCL;
+	flag |= SHM_R;
+	flag |= SHM_W;
+	flag |= S_IRUSR;
+	flag |= S_IWUSR;
 
 	size = round_up(size, SHM_PAGE_SIZE) + SHM_PAGE_SIZE;
 
 	fd = shmget(key, size, flag);
 	if(fd < 0)
+	{
+		if(try_huge_page)
+		{
+			try_huge_page = 0;
+			goto __shmm_create_remap;
+		}
+
 		goto error_ret;
+	}
 
 	ret_addr = shmat(fd, at_addr, SHM_RND);
 	if(ret_addr == (void*)(-1))

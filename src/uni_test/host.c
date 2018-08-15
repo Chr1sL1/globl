@@ -1282,7 +1282,7 @@ long init_mm(int key)
 	struct mm_space_config cfg;
 
 	cfg.sys_shmm_key = key;
-	cfg.try_huge_page = 0;
+	cfg.try_huge_page = 1;
 	cfg.sys_begin_addr = 0x7ffff7fd2000;
 	cfg.max_shmm_count = 32;
 
@@ -1469,6 +1469,7 @@ void test_co()
 		if(ts->j % 2 == 0)
 		{
 			co_resume(ts->_co);
+			printf("yield cycles: %lu.\n", co_profile_yield(ts->_co));
 //			sleep(1);
 		}
 	}
@@ -1518,7 +1519,7 @@ int main(void)
 
 //	test_pb();
 
-	rslt = init_mm(222);
+	rslt = init_mm(201);
 	if(rslt < 0) goto error_ret;
 
 //	net_test_server(1);

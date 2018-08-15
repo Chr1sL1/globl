@@ -14,6 +14,9 @@ int co_run(struct co_task* co, void* co_func_param);
 int co_yield(struct co_task* co);
 int co_resume(struct co_task* co);
 
+unsigned long co_profile_yield(struct co_task* co);
+unsigned long co_profile_resume(struct co_task* co);
+
 struct co_holder
 {
 	struct slist _co_list;

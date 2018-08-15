@@ -6,8 +6,12 @@ asm_co_yield:
 	.cfi_startproc
 	pushq	%rbp
 	pushq	%rbx
-
 	movq	%rdi, %rbx
+
+	rdtsc
+	shlq	$32, %rdx
+	addq	%rdx, %rax
+	movq	%rax, 0x40(%rbx)
 
 	movq	$0x0, 0x38(%rbx)
 
@@ -44,6 +48,12 @@ asm_co_yield:
 	movq    %rdx,0x70(%rax)
 	movq    %r15,%rdx
 	movq    %rdx,0x78(%rax)
+
+	rdtsc
+	shlq	$32, %rdx
+	addq	%rdx, %rax
+	subq	0x40(%rbx), %rax
+	movq	%rax, 0x40(%rbx)
 
 	movb	0x09(%rbx), %al
 	testb	%al, %al
