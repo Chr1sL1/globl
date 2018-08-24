@@ -51,7 +51,6 @@ enum MM_INIT_RESULT
 
 struct mm_space_config
 {
-	unsigned long sys_begin_addr;
 	int sys_shmm_key;
 	int try_huge_page;
 	int max_shmm_count;

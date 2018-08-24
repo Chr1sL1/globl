@@ -32,7 +32,8 @@ struct net_config
 {
 	unsigned int send_buff_len;
 	unsigned int recv_buff_len;
-	unsigned int max_fd_count;
+	unsigned int nr_acceptor;
+	unsigned int nr_session;
 };
 
 struct net_ops

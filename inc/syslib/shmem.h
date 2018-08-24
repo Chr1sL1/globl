@@ -15,9 +15,11 @@ struct shmm_blk
 	struct dlnode lst_node;
 };
 
-struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try_huge_page);
+struct shmm_blk* shmm_create(int key, unsigned long size, int try_huge_page);
 struct shmm_blk* shmm_open(int key, void* at_addr);
 struct shmm_blk* shmm_open_raw(int key, void* at_addr);
+struct shmm_blk* shmm_reload(int key);
+
 
 long shmm_close(struct shmm_blk* shm);
 long shmm_destroy(struct shmm_blk* shm);

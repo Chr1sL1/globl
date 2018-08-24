@@ -27,6 +27,7 @@ struct _shmm_blk_impl
 {
 	unsigned long _shmm_tag;
 	struct shmm_blk _the_blk;
+	void* _raw_addr;
 
 	int _the_key;
 	int _fd;
@@ -55,7 +56,17 @@ error_ret:
 	return 0;
 }
 
-struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try_huge_page)
+static inline void* _shmm_get_raw_addr(struct shmm_blk* shm)
+{
+	struct _shmm_blk_impl* sbi = _conv_blk(shm);
+	if(!sbi) goto error_ret;
+
+	return sbi->_raw_addr;
+error_ret:
+	return 0;
+}
+
+struct shmm_blk* shmm_create(int key, unsigned long size, int try_huge_page)
 {
 	int flag;
 	int fd;
@@ -66,8 +77,8 @@ struct shmm_blk* shmm_create(int key, void* at_addr, unsigned long size, int try
 	if(key == IPC_PRIVATE || key <= 0 || size <= 0)
 		goto error_ret;
 
-	if(((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
-		goto error_ret;
+//	if(((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
+//		goto error_ret;
 
 __shmm_create_remap:	
 	flag = 0;
@@ -87,8 +98,8 @@ __shmm_create_remap:
 	flag |= IPC_EXCL;
 	flag |= SHM_R;
 	flag |= SHM_W;
-	flag |= S_IRUSR;
-	flag |= S_IWUSR;
+//	flag |= S_IRUSR;
+//	flag |= S_IWUSR;
 
 	size = round_up(size, SHM_PAGE_SIZE) + SHM_PAGE_SIZE;
 
@@ -104,7 +115,7 @@ __shmm_create_remap:
 		goto error_ret;
 	}
 
-	ret_addr = shmat(fd, at_addr, SHM_RND);
+	ret_addr = shmat(fd, 0, SHM_RND);
 	if(ret_addr == (void*)(-1))
 		goto error_ret;
 
@@ -115,6 +126,8 @@ __shmm_create_remap:
 
 	addr_begin = move_ptr_roundup(ret_addr, sizeof(struct _shmm_blk_impl), SHM_PAGE_SIZE);
 	sbi->_the_blk.addr_begin_offset = addr_begin - ret_addr;
+
+	sbi->_raw_addr = ret_addr;
 
 	sbi->_the_key = key;
 	sbi->_fd = fd;
@@ -128,8 +141,11 @@ error_ret:
 		if(ret_addr)
 			shmdt(ret_addr);
 	}
-	return 0;
 
+	if(fd > 0)
+		shmctl(fd, IPC_RMID, 0);
+
+	return 0;
 }
 
 struct shmm_blk* shmm_open(int key, void* at_addr)
@@ -153,10 +169,13 @@ struct shmm_blk* shmm_open_raw(int key, void* at_addr)
 	if(at_addr && ((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
 		goto error_ret;
 
-	flag |= SHM_R;
-	flag |= SHM_W;
-	flag |= S_IRUSR;
-	flag |= S_IWUSR;
+	if(!at_addr)
+		flag = SHM_RND;
+
+//	flag |= SHM_R;
+//	flag |= SHM_W;
+//	flag |= S_IRUSR;
+//	flag |= S_IWUSR;
 
 	fd = shmget(key, 0, flag);
 	if(fd < 0)
@@ -179,6 +198,29 @@ error_ret:
 	}
 	return 0;
 
+}
+
+struct shmm_blk* shmm_reload(int key)
+{
+	int rslt;
+	void* raw_addr;
+
+	struct shmm_blk* tmp_blk = shmm_open_raw(key, 0); 
+	err_exit(!tmp_blk, "shmm_reload: open raw railed.");
+
+	raw_addr = _shmm_get_raw_addr(tmp_blk);
+	err_exit(!raw_addr, "shmm_reload: get raw addr railed.");
+
+	shmm_close(tmp_blk);
+
+	return shmm_open_raw(key, raw_addr);
+error_ret:
+	if(tmp_blk)
+	{
+		shmm_close(tmp_blk);
+	}
+
+	return 0;
 }
 
 inline long shmm_close(struct shmm_blk* shm)

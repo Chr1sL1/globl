@@ -67,7 +67,7 @@ struct ipc_peer* ipc_create(int channel_id, unsigned long buffer_size, int use_h
 	shmm_key = mm_create_shm_key(MM_SHM_IPC, 0, &sub_key);
 	if(shmm_key < 0) goto error_ret;
 
-	ipi->_shb = shmm_create(shmm_key, 0, buffer_size, use_huge_tlb);
+	ipi->_shb = shmm_create(shmm_key, buffer_size, use_huge_tlb);
 	if(!ipi->_shb) goto error_ret;
 
 	addr_begin = shmm_begin_addr(ipi->_shb);

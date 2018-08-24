@@ -37,9 +37,10 @@ enum USR_SESSION_STATE
 
 static struct net_config __cfg =
 {
-	.max_fd_count = 64,
-	.recv_buff_len = 1024,
-	.send_buff_len = 1024,
+	.nr_acceptor = 64,
+	.nr_session = 64,
+	.recv_buff_len = 1024 * 128,
+	.send_buff_len = 1024 * 128,
 };
 
 struct svr_session
@@ -243,7 +244,7 @@ static long run_connector(struct net_struct* net)
 	unsigned long r1 = 0, r2 = 0;
 	int send_len;
 	int pending_count = 0;
-	unsigned int ip = inet_addr("192.168.56.56");
+	unsigned int ip = inet_addr("10.85.45.212");
 
 	char send_buf[net->cfg.send_buff_len];
 
@@ -258,7 +259,7 @@ static long run_connector(struct net_struct* net)
 
 			__conn_session[i].idx = i;
 
-			struct session* s = net_connect(net, ip, 7070);
+			struct session* s = net_connect(net, ip, 7099);
 			err_exit(!s, "connect failed [%d]", i);
 
 			net_bind_session_ops(s, &ops);
@@ -342,10 +343,10 @@ long net_test_server(int silent)
 		err_exit(!fp, "redirect stderr failed");
 	}
 
-	net = net_create(&__cfg, &ops, NT_INTRANET);
+	net = net_create(&__cfg, &ops, NT_INTERNET);
 	err_exit(!net, "create net failed.");
 
-	acc = net_create_acceptor(net, 0, 7070);
+	acc = net_create_acceptor(net, 0, 7099);
 	err_exit(!acc, "create acceptor failed.");
 
 	while(__running)

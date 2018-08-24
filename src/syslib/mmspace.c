@@ -535,7 +535,7 @@ static long _mm_create_section(struct _mm_space_impl* mm, int ar_type)
 
 	shmm_key = mm_create_shm_key(MM_SHM_MEMORY_SPACE, mm->_cfg.sys_shmm_key, &sub_key);
 
-	shm = shmm_create(shmm_key, 0, mm->_cfg.mm_cfg[ar_type].total_size, mm->_cfg.try_huge_page);
+	shm = shmm_create(shmm_key, mm->_cfg.mm_cfg[ar_type].total_size, mm->_cfg.try_huge_page);
 	err_exit(!shm, "create shmm error.");
 
 	ar = &mm->_area_list[ar_type];
@@ -598,7 +598,8 @@ long mm_initialize(struct mm_space_config* cfg)
 
 	shm_size = sizeof(struct _mm_space_impl) + sizeof(struct _mm_shmm_save) * cfg->max_shmm_count + sizeof(struct dlist) * ZONE_HASH_SIZE;
 
-	shm = shmm_open_raw(cfg->sys_shmm_key, (void*)cfg->sys_begin_addr);
+//	shm = shmm_open_raw(cfg->sys_shmm_key, (void*)cfg->sys_begin_addr);
+	shm = shmm_reload(cfg->sys_shmm_key);
 	if(shm)
 	{
 		addr_begin = shmm_begin_addr(shm);
@@ -616,7 +617,7 @@ long mm_initialize(struct mm_space_config* cfg)
 		goto succ_ret;
 	}
 
-	shm = shmm_create(cfg->sys_shmm_key, (void*)cfg->sys_begin_addr, shm_size, cfg->try_huge_page);
+	shm = shmm_create(cfg->sys_shmm_key, shm_size, cfg->try_huge_page);
 	if(!shm) goto error_ret;
 
 	addr_begin = shmm_begin_addr(shm);

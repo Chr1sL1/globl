@@ -83,6 +83,7 @@ struct _inet_impl
 	struct dlist _ses_list;
 	struct _nt_ops* _handler;
 	struct objpool* _ses_pool;
+	struct objpool* _acc_pool;
 
 	union
 	{
@@ -243,14 +244,28 @@ static inline struct _poll_obj* _conv_poll_obj_rbn(struct rbnode* rbn)
 static inline void _sei_free_buf(struct _ses_impl* sei)
 {
 	if(sei->_recv_buf)
-//		mm_free(sei->_recv_buf);
 		free(sei->_recv_buf);
 	if(sei->_send_buf)
-//		mm_free(sei->_send_buf);
 		free(sei->_send_buf);
 
 	sei->_recv_buf = 0;
 	sei->_send_buf = 0;
+}
+
+static inline int _sei_alloc_buf(struct _ses_impl* sei)
+{
+	struct _inet_impl* inet = sei->_inet;
+
+	sei->_recv_buf = malloc(sei->_inet->_the_net.cfg.recv_buff_len);
+	if(!sei->_recv_buf) goto error_ret;
+
+	sei->_send_buf = malloc(sei->_inet->_the_net.cfg.send_buff_len);
+	if(!sei->_send_buf) goto error_ret;
+
+	return 0;
+error_ret:
+	_sei_free_buf(sei);
+	return -1;
 }
 
 static void _sei_ctor(void* ptr)
@@ -342,10 +357,18 @@ error_ret:
 	return -1;
 }
 
+static inline unsigned int _max_fd_count(struct _inet_impl* inet)
+{
+	return inet->_the_net.cfg.nr_acceptor + inet->_the_net.cfg.nr_session;
+}
+
 static struct _inet_impl* _net_create(const struct net_config* cfg, const struct net_ops* ops, struct _nt_ops* handler)
 {
 	long rslt;
-	struct _inet_impl* inet = 0;
+	struct _inet_impl* inet;
+	unsigned long pool_size;
+	void* pool_acc;
+	void* pool_ses;
 
 	inet = (struct _inet_impl*)malloc(sizeof(struct _inet_impl));
 	if(!inet) goto error_ret;
@@ -355,7 +378,9 @@ static struct _inet_impl* _net_create(const struct net_config* cfg, const struct
 
 	inet->_the_net.cfg.send_buff_len = cfg->send_buff_len;
 	inet->_the_net.cfg.recv_buff_len = cfg->recv_buff_len;
-	inet->_the_net.cfg.max_fd_count = cfg->max_fd_count;
+
+	inet->_the_net.cfg.nr_acceptor = cfg->nr_acceptor;
+	inet->_the_net.cfg.nr_session = cfg->nr_session;
 
 	inet->_the_net.ops.func_acc = ops->func_acc;
 	inet->_the_net.ops.func_conn = ops->func_conn;
@@ -364,8 +389,29 @@ static struct _inet_impl* _net_create(const struct net_config* cfg, const struct
 
 	inet->_handler = handler;
 
+	pool_size = objpool_mem_usage(cfg->nr_acceptor, sizeof(struct _acc_impl));
+	pool_acc = malloc(pool_size);
+	err_exit(!pool_acc, "malloc acc pool failed.");
+	inet->_acc_pool = objpool_create(pool_acc, pool_size, sizeof(struct _acc_impl), 0, 0);
+	err_exit(!inet->_acc_pool, "malloc acc pool failed.");
+
+	pool_size = objpool_mem_usage(cfg->nr_session, sizeof(struct _ses_impl));
+	pool_ses = malloc(pool_size);
+	err_exit(!pool_ses, "malloc ses pool failed.");
+	inet->_ses_pool = objpool_create(pool_ses, pool_size, sizeof(struct _ses_impl), _sei_ctor, _sei_dtor);
+	err_exit(!inet->_ses_pool, "malloc ses pool failed.");
+
 	return inet;
 error_ret:
+	if(inet->_acc_pool)
+		objpool_destroy(inet->_acc_pool);
+	if(inet->_ses_pool)
+		objpool_destroy(inet->_ses_pool);
+
+	if(pool_acc)
+		free(pool_acc);
+	if(pool_ses)
+		free(pool_ses);
 	if(inet)
 		free(inet);
 	return 0;
@@ -373,10 +419,12 @@ error_ret:
 
 static long _internet_init(struct _inet_impl* inet)
 {
-	inet->_ep_ev = (struct epoll_event*)malloc(inet->_the_net.cfg.max_fd_count * sizeof(struct epoll_event));
+	unsigned int nr_fd = _max_fd_count(inet);
+
+	inet->_ep_ev = (struct epoll_event*)malloc(nr_fd * sizeof(struct epoll_event));
 	if(!inet->_ep_ev) goto error_ret;
 
-	inet->_epoll_fd = epoll_create(inet->_the_net.cfg.max_fd_count);
+	inet->_epoll_fd = epoll_create(nr_fd);
 	if(inet->_epoll_fd < 0) goto error_ret;
 
 	return 0;
@@ -469,7 +517,7 @@ static struct _acc_impl* _net_create_acc(struct _inet_impl* inet, unsigned int i
 	struct _acc_impl* aci;
 	struct sockaddr_in addr;
 
-	aci = (struct _acc_impl*)malloc(sizeof(struct _acc_impl));
+	aci = (struct _acc_impl*)objpool_alloc(inet->_acc_pool);
 	if(!aci) goto error_ret;
 
 	aci->_sock_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
@@ -570,7 +618,7 @@ static long _net_destroy_acc(struct _acc_impl* aci)
 	close(aci->_sock_fd);
 	aci->_type_info = 0;
 
-	free(aci);
+	objpool_free(inet->_acc_pool, aci);
 	return 0;
 error_ret:
 	return -1;
@@ -616,7 +664,7 @@ static struct _ses_impl* _net_create_session(struct _inet_impl* inet, int socket
 	struct timeval to;
 
 //	sei = mm_cache_alloc(__the_ses_zone);
-	sei = malloc(sizeof(struct _ses_impl));
+	sei = (struct _ses_impl*)objpool_alloc(inet->_ses_pool);
 	err_exit(!sei, "_net_create_session alloc session error.");
 
 	sei->_sock_fd = socket_fd;
@@ -636,18 +684,11 @@ static struct _ses_impl* _net_create_session(struct _inet_impl* inet, int socket
 	sei->_recv_buf_len = inet->_the_net.cfg.recv_buff_len;
 	sei->_send_buf_len = inet->_the_net.cfg.send_buff_len;
 
-//	sei->_recv_buf = mm_alloc(sei->_recv_buf_len);
-	sei->_recv_buf = malloc(sei->_recv_buf_len);
-	err_exit(!sei->_recv_buf, "_net_create_session alloc recv buff error.");
-
-//	sei->_send_buf = mm_alloc(sei->_send_buf_len);
-	sei->_send_buf = malloc(sei->_send_buf_len);
-	err_exit(!sei->_send_buf, "_net_create_session alloc send buff error.");
+	rslt = _sei_alloc_buf(sei);
+	err_exit(rslt < 0, "_net_create_session alloc buff failed.");
 
 	sei->_state = _SES_ESTABLISHING;
 	lst_push_back(&inet->_ses_list, &sei->_lst_node);
-
-//	printf("create session ptr <%p>\n", sei);
 
 	return sei;
 error_ret:
@@ -793,9 +834,10 @@ static long _net_on_acc(struct _acc_impl* aci)
 	struct _inet_impl* inet = aci->_inet;
 
 	new_sock = accept4(aci->_sock_fd, (struct sockaddr*)&remote_addr, &addr_len, 0);
-	err_exit(new_sock < 0, "accept error: (%d:%s)", errno, strerror(errno));
+	if(new_sock < 0 && (errno == EWOULDBLOCK || errno == EAGAIN))
+		goto do_nothing_ret;
 
-//	err_exit(inet->_ses_list.size >= inet->_the_net.cfg.max_fd_count, "accept: connection full.");
+	err_exit(new_sock < 0, "accept error: (%d:%s)", errno, strerror(errno));
 
 	sei = (*inet->_handler->__create_ses_func)(inet, new_sock);
 	err_exit(!sei, "accept: create session error.");
@@ -808,6 +850,7 @@ static long _net_on_acc(struct _acc_impl* aci)
 	if(inet->_the_net.ops.func_acc)
 		(*inet->_the_net.ops.func_acc)(&aci->_the_acc, &sei->_the_ses);
 
+do_nothing_ret:
 	return 0;
 error_ret:
 	if(new_sock > 0)
@@ -821,7 +864,7 @@ static long _net_close(struct _ses_impl* sei)
 	struct dlnode* dln;
 	struct _inet_impl* inet = sei->_inet;
 
-	_sei_free_buf(sei);
+//	_sei_free_buf(sei);
 
 	if(sei->_state != _SES_INVALID && sei->_state != _SES_CLOSED)
 	{
@@ -843,7 +886,9 @@ static long _net_close(struct _ses_impl* sei)
 
 	sei->_state = _SES_CLOSED;
 
-	free(sei);
+	objpool_free(inet->_ses_pool, sei);
+
+//	free(sei);
 	return 0;
 //	return mm_cache_free(__the_ses_zone, sei);
 error_ret:
@@ -1083,7 +1128,9 @@ static long _internet_run(struct _inet_impl* inet, int timeout)
 	long rslt, cnt;
 	struct _ses_impl* sei;
 
-	cnt = epoll_wait(inet->_epoll_fd, inet->_ep_ev, inet->_the_net.cfg.max_fd_count, timeout);
+	unsigned int nr_fd = _max_fd_count(inet);
+
+	cnt = epoll_wait(inet->_epoll_fd, inet->_ep_ev, nr_fd, timeout);
 	if(cnt < 0) goto error_ret;
 
 	for(long i = 0; i < cnt; ++i)

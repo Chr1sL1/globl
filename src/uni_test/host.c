@@ -246,7 +246,7 @@ long test_mmp(long total_size, long min_block_idx, long max_block_idx, long node
 	cfg.min_order = min_block_idx;
 	cfg.max_order = max_block_idx;
 
-	struct shmm_blk* sb = shmm_create(101, 0, total_size, 0);
+	struct shmm_blk* sb = shmm_create(101, total_size, 0);
 	if(!sb)
 	{
 		perror(strerror(errno));
@@ -1168,7 +1168,6 @@ void test_mm(void)
 
 	cfg.sys_shmm_key = 103;
 	cfg.try_huge_page = 0;
-	cfg.sys_begin_addr = 0x7ffff7fd2000;
 	cfg.max_shmm_count = 8;
 
 
@@ -1282,8 +1281,7 @@ long init_mm(int key)
 	struct mm_space_config cfg;
 
 	cfg.sys_shmm_key = key;
-	cfg.try_huge_page = 1;
-	cfg.sys_begin_addr = 0x7ffff7fd2000;
+	cfg.try_huge_page = 0;
 	cfg.max_shmm_count = 32;
 
 
@@ -1522,11 +1520,11 @@ int main(void)
 	rslt = init_mm(201);
 	if(rslt < 0) goto error_ret;
 
-//	net_test_server(1);
+	net_test_server(1);
 
 //	test_timer();
 //
-	test_co();
+//	test_co();
 
 	mm_uninitialize();
 

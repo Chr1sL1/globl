@@ -39,6 +39,9 @@ struct _objpool_impl
 	unsigned int _actual_obj_size;
 	unsigned int _obj_count;
 
+	objpool_ctor _ctor;
+	objpool_dtor _dtor;
+
 	struct _obj_node _node_pool[0];
 };
 
@@ -104,13 +107,13 @@ static inline void _return_fln(struct _objpool_impl* umi, struct _obj_node* un)
 	lst_push_front(&umi->_free_list, &un->_fln);
 }
 
-struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_size)
+struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_size, objpool_ctor ctor, objpool_dtor dtor)
 {
 	struct _objpool_impl* umi;
 	void* cur_pos = addr;
 	unsigned long chunk_size;
 
-	if(!addr || ((unsigned long)addr & 63) != 0) goto error_ret;
+	if(!addr || ((unsigned long)addr & 7) != 0) goto error_ret;
 	if(size <= sizeof(struct _objpool_impl))
 		goto error_ret;
 
@@ -118,7 +121,7 @@ struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_s
 	if(umi->_chunk_label == OBJPOOL_LABEL)
 		goto error_ret;
 
-	cur_pos = move_ptr_align64(cur_pos, sizeof(struct _objpool_impl));
+	cur_pos = move_ptr_align8(cur_pos, sizeof(struct _objpool_impl));
 
 	umi->_the_pool.addr_begin = addr;
 	umi->_the_pool.addr_end = addr + size;
@@ -129,9 +132,12 @@ struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_s
 	umi->_obj_count = (umi->_the_pool.addr_end - cur_pos) / (sizeof(struct _obj_node) + umi->_actual_obj_size);
 
 //	umi->_node_pool = (struct _obj_node*)cur_pos;
-	cur_pos = move_ptr_align64(cur_pos, sizeof(struct _obj_node) * umi->_obj_count);
+	cur_pos = move_ptr_align8(cur_pos, sizeof(struct _obj_node) * umi->_obj_count);
 
 	umi->_chunk_addr = cur_pos;
+
+	umi->_ctor = ctor;
+	umi->_dtor = dtor;
 
 	lst_new(&umi->_free_list);
 
@@ -154,7 +160,7 @@ error_ret:
 	return 0;
 }
 
-struct objpool* objpool_load(void* addr)
+struct objpool* objpool_load(void* addr, objpool_ctor ctor, objpool_dtor dtor)
 {
 	struct _objpool_impl* umi;
 	void* cur_pos = addr;
@@ -173,6 +179,12 @@ struct objpool* objpool_load(void* addr)
 	return &umi->_the_pool;
 error_ret:
 	return 0;
+}
+
+inline unsigned long objpool_mem_usage(unsigned long obj_count, unsigned long obj_size)
+{
+	return align8(sizeof(struct _objpool_impl)) + align8(sizeof(struct _obj_node) * obj_count)
+		+ align8(obj_size + sizeof(struct _obj_header)) * obj_count; 
 }
 
 static int _objpool_destroy(struct _objpool_impl* umi)
@@ -206,6 +218,7 @@ void* objpool_alloc(struct objpool* mm)
 	struct _obj_node* un;
 	struct _obj_header* uoh;
 	struct _objpool_impl* umi = _conv_impl(mm);
+	void* obj_ptr;
 	if(!umi) goto error_ret;
 
 	un = _fetch_fln(umi);
@@ -217,7 +230,12 @@ void* objpool_alloc(struct objpool* mm)
 
 	_set_flag(uoh, UFB_USED);
 
-	return _get_payload(uoh);
+	obj_ptr = _get_payload(uoh);
+
+	if(umi->_ctor && obj_ptr)
+		(*umi->_ctor)(obj_ptr);
+
+	return obj_ptr;
 error_ret:
 	return 0;
 }
@@ -237,6 +255,9 @@ int objpool_free(struct objpool* mm, void* p)
 	un = _get_node_from_obj(umi, uoh);
 	if(!un || un->_obj != uoh)
 		goto error_ret;
+
+	if(umi->_dtor && p)
+		(*umi->_dtor)(p);
 
 	_clear_flag(uoh, UFB_USED);
 

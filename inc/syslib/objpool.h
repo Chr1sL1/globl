@@ -1,17 +1,14 @@
 #ifndef __objpool_h__
 #define __objpool_h__
 
-//struct objpool
-//{
-//	void* addr_begin;
-//	void* addr_end;
-//	unsigned long obj_size;
-//};
-
 struct objpool;
 
-struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_size);
-struct objpool* objpool_load(void* addr);
+typedef void (*objpool_ctor)(void* obj_ptr);
+typedef void (*objpool_dtor)(void* obj_ptr);
+
+struct objpool* objpool_create(void* addr, unsigned int size, unsigned int obj_size, objpool_ctor ctor, objpool_dtor dtor);
+struct objpool* objpool_load(void* addr, objpool_ctor ctor, objpool_dtor dtor);
+unsigned long objpool_mem_usage(unsigned long obj_count, unsigned long obj_size);
 
 int objpool_destroy(struct objpool* mm);
 
