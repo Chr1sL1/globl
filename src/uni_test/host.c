@@ -1479,6 +1479,24 @@ error_ret:
 	return;
 }
 
+static void rpc_co_func(struct co_task* co, void* param)
+{
+
+}
+
+int rpc_call(const char* param, int param_size)
+{
+	struct co_task* co = co_create(rpc_co_func);
+	err_exit(!co, "failed.");
+
+	co_run(co, 0);
+
+	
+	return 0;
+error_ret:
+	return -1;
+}
+
 void test_pb()
 {
 	unsigned char buffer[128];

@@ -8,8 +8,13 @@
 
 struct shmm_blk
 {
-	unsigned long addr_begin_offset;
-	unsigned long addr_end_offset;
+	unsigned long _shmm_tag;
+	unsigned long _addr_begin_offset;
+	unsigned long _addr_end_offset;
+
+	void* _raw_addr;
+	int _the_key;
+	int _fd;
 
 	struct rbnode rb_node;
 	struct dlnode lst_node;
