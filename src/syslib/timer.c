@@ -143,7 +143,7 @@ static inline void _add_timer(struct timer_node* tn)
 }
 
 
-timer_handle_t timer_schedule(unsigned int delay_tick, timer_func_t callback_func, int rune_once, void* param)
+struct timer_node* timer_schedule(unsigned int delay_tick, timer_func_t callback_func, int rune_once, void* param)
 {
 	struct timer_node* _node = NULL;
 
@@ -173,13 +173,12 @@ static inline void _del_timer(struct timer_node* tn)
 	mm_cache_free(__the_timer_node_zone, tn);
 }
 
-void del_timer(timer_handle_t the_timer)
+void del_timer(struct timer_node* timer_node)
 {
-	struct timer_node* _node = (struct timer_node*)the_timer;
-	err_exit(!_node, "del_timer null node.");
-	err_exit(_node->_magic != TIMER_NODE_TYPE_MAGIC, "del_timer type error.");
+	err_exit(!timer_node, "del_timer null node.");
+	err_exit(timer_node->_magic != TIMER_NODE_TYPE_MAGIC, "del_timer type error.");
 
-	_del_timer(_node);
+	_del_timer(timer_node);
 
 	return;
 error_ret:

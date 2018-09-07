@@ -1,0 +1,5 @@
+#!/bin/sh
+
+touch inc/syslib/$1.h
+touch src/syslib/$1.c
+

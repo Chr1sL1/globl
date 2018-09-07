@@ -1373,7 +1373,7 @@ void test_timer_func(void* p)
 
 static long __last_tm = 0;
 
-static void _test_task_timer(timer_handle_t t, void* p)
+static void _test_task_timer(struct timer_node* t, void* p)
 {
 	__last_tm = dbg_current_tick();
 }
@@ -1479,22 +1479,57 @@ error_ret:
 	return;
 }
 
+static void my_timer_func(struct timer_node* t, void* param)
+{
+	struct co_task* co = (struct co_task*)param;
+
+	printf("timer_func called.\n");
+
+	co_resume(co);
+}
+
+
 static void rpc_co_func(struct co_task* co, void* param)
 {
+	struct timer_node* tm = timer_schedule(100, my_timer_func, 1, co);
+	err_exit(!tm, "schedule timer error.");
 
+	printf("rpc_co_func running.\n");
+
+	co_yield(co);
+
+	printf("rpc_co_func returned.\n");
+
+error_ret:
+	return;
 }
 
 int rpc_call(const char* param, int param_size)
 {
 	struct co_task* co = co_create(rpc_co_func);
-	err_exit(!co, "failed.");
+	err_exit(!co, "rpc co create failed.");
 
 	co_run(co, 0);
 
+	printf("rpc call returned.\n");
+
+	running = 0;
 	
 	return 0;
 error_ret:
 	return -1;
+}
+
+void test_rpc(void)
+{
+	rpc_call("111", 3);
+	running = 1;
+
+	while(running)
+	{
+		on_tick();
+		usleep(1000);
+	}
 }
 
 void test_pb()
@@ -1538,7 +1573,11 @@ int main(void)
 	rslt = init_mm(201);
 	if(rslt < 0) goto error_ret;
 
-	net_test_server(1);
+//	net_test_server(1);
+
+	init_timer();
+
+	test_rpc();
 
 //	test_timer();
 //
