@@ -42,63 +42,69 @@ struct _inet_impl;
 struct _acc_impl;
 struct _ses_impl;
 
-typedef long (*_nt_init_func)(struct _inet_impl* inet);
-typedef long (*_nt_destroy_func)(struct _inet_impl* inet);
+//typedef long (*_nt_init_func)(struct _inet_impl* inet);
+//typedef long (*_nt_destroy_func)(struct _inet_impl* inet);
+//
+//typedef struct _acc_impl* (*_nt_create_acc_func)(struct _inet_impl* inet, unsigned int ip, unsigned short port);
+//typedef long (*_nt_destroy_acc_func)(struct _acc_impl* aci);
+//
+//typedef struct _ses_impl* (*_nt_create_session_func)(struct _inet_impl* inet, int socket_fd);
+//typedef long (*_nt_disconn_func)(struct _ses_impl* sei);
+//
+//typedef long (*_nt_run_func)(struct _inet_impl* inet, int timeout);
+//
+//typedef void (*_nt_set_outbit_func)(struct _inet_impl* inet, struct _ses_impl* sei);
+//typedef void (*_nt_clr_outbit_func)(struct _inet_impl* inet, struct _ses_impl* sei);
 
-typedef struct _acc_impl* (*_nt_create_acc_func)(struct _inet_impl* inet, unsigned int ip, unsigned short port);
-typedef long (*_nt_destroy_acc_func)(struct _acc_impl* aci);
+//struct _nt_ops
+//{
+//	_nt_init_func __init_func;
+//	_nt_destroy_func __destroy_func;
+//
+//	_nt_create_acc_func __create_acc_func;
+//	_nt_destroy_acc_func __destroy_acc_func;
+//
+//	_nt_create_session_func __create_ses_func;
+//	_nt_disconn_func __disconn_func;
+//
+//	_nt_run_func __run_func;
+//};
 
-typedef struct _ses_impl* (*_nt_create_session_func)(struct _inet_impl* inet, int socket_fd);
-typedef long (*_nt_disconn_func)(struct _ses_impl* sei);
-
-typedef long (*_nt_run_func)(struct _inet_impl* inet, int timeout);
-
-typedef void (*_nt_set_outbit_func)(struct _inet_impl* inet, struct _ses_impl* sei);
-typedef void (*_nt_clr_outbit_func)(struct _inet_impl* inet, struct _ses_impl* sei);
-
-struct _nt_ops
-{
-	_nt_init_func __init_func;
-	_nt_destroy_func __destroy_func;
-
-	_nt_create_acc_func __create_acc_func;
-	_nt_destroy_acc_func __destroy_acc_func;
-
-	_nt_create_session_func __create_ses_func;
-	_nt_disconn_func __disconn_func;
-
-	_nt_run_func __run_func;
-};
-
-struct _poll_obj
-{
-	struct rbnode _rbn;
-	void* _obj;
-};
+//struct _poll_obj
+//{
+//	struct rbnode _rbn;
+//	void* _obj;
+//};
 
 struct _inet_impl
 {
 	struct net_struct _the_net;
 	struct dlist _acc_list;
 	struct dlist _ses_list;
-	struct _nt_ops* _handler;
+//	struct _nt_ops* _handler;
 	struct objpool* _ses_pool;
 	struct objpool* _acc_pool;
 
-	union
+	struct
 	{
-		struct
-		{
-			struct epoll_event* _ep_ev;
-			int _epoll_fd;
-		};
-
-		struct
-		{
-			struct rbtree _po_rbt;
-			int _po_cnt;
-		};
+		struct epoll_event* _ep_ev;
+		int _epoll_fd;
 	};
+
+//	union
+//	{
+//		struct
+//		{
+//			struct epoll_event* _ep_ev;
+//			int _epoll_fd;
+//		};
+
+//		struct
+//		{
+//			struct rbtree _po_rbt;
+//			int _po_cnt;
+//		};
+//	};
 };
 
 struct _acc_impl
@@ -110,7 +116,7 @@ struct _acc_impl
 	struct acceptor _the_acc;
 	struct dlnode _lst_node;
 
-	struct _poll_obj* _obj;
+//	struct _poll_obj* _obj;
 };
 
 struct _ses_impl
@@ -123,7 +129,7 @@ struct _ses_impl
 	struct dlnode _lst_node;
 	struct session_ops _ops;
 
-	struct _poll_obj* _obj;
+//	struct _poll_obj* _obj;
 
 	char* _recv_buf;
 	char* _send_buf;
@@ -151,25 +157,25 @@ static struct linger __linger_option =
 //static struct mmcache* __the_poll_obj_zone = 0;
 
 static long _internet_init(struct _inet_impl* inet);
-static long _intranet_init(struct _inet_impl* inet);
+//static long _intranet_init(struct _inet_impl* inet);
 
 static long _internet_destroy(struct _inet_impl* inet);
-static long _intranet_destroy(struct _inet_impl* inet);
+//static long _intranet_destroy(struct _inet_impl* inet);
 
 static struct _acc_impl* _internet_create_acceptor(struct _inet_impl* inet, unsigned int ip, unsigned short port);
-static struct _acc_impl* _intranet_create_acceptor(struct _inet_impl* inet, unsigned int ip, unsigned short port);
+//static struct _acc_impl* _intranet_create_acceptor(struct _inet_impl* inet, unsigned int ip, unsigned short port);
 
 static long _internet_destroy_acceptor(struct _acc_impl* aci);
-static long _intranet_destroy_acceptor(struct _acc_impl* aci);
+//static long _intranet_destroy_acceptor(struct _acc_impl* aci);
 
 static struct _ses_impl* _internet_create_session(struct _inet_impl* inet, int socket_fd);
-static struct _ses_impl* _intranet_create_session(struct _inet_impl* inet, int socket_fd);
+//static struct _ses_impl* _intranet_create_session(struct _inet_impl* inet, int socket_fd);
 
 static long _internet_disconn(struct _ses_impl* sei);
-static long _intranet_disconn(struct _ses_impl* sei);
+//static long _intranet_disconn(struct _ses_impl* sei);
 
 static long _internet_run(struct _inet_impl* inet, int timeout);
-static long _intranet_run(struct _inet_impl* inet, int timeout);
+//static long _intranet_run(struct _inet_impl* inet, int timeout);
 
 static long _internet_on_acc(struct _acc_impl* aci);
 static long _net_close(struct _ses_impl* sei);
@@ -181,34 +187,34 @@ static void _net_on_send(struct _ses_impl* sei);
 static long _net_disconn(struct _ses_impl* sei);
 static long _net_destroy_acc(struct _acc_impl* aci);
 
-struct _nt_ops __net_ops[NT_COUNT] =
-{
-	[NT_INTERNET] = {
-		.__init_func = _internet_init,
-		.__destroy_func = _internet_destroy,
-
-		.__create_acc_func = _internet_create_acceptor,
-		.__destroy_acc_func = _internet_destroy_acceptor,
-
-		.__create_ses_func = _internet_create_session,
-		.__disconn_func = _internet_disconn,
-		.__run_func = _internet_run,
-
-	},
-
-	[NT_INTRANET] = {
-		.__init_func = _intranet_init,
-		.__destroy_func = _intranet_destroy,
-
-		.__create_acc_func = _intranet_create_acceptor,
-		.__destroy_acc_func = _intranet_destroy_acceptor,
-
-		.__create_ses_func = _intranet_create_session,
-		.__disconn_func = _intranet_disconn,
-		.__run_func = _intranet_run,
-
-	},
-};
+//struct _nt_ops __net_ops[NT_COUNT] =
+//{
+//	[NT_INTERNET] = {
+//		.__init_func = _internet_init,
+//		.__destroy_func = _internet_destroy,
+//
+//		.__create_acc_func = _internet_create_acceptor,
+//		.__destroy_acc_func = _internet_destroy_acceptor,
+//
+//		.__create_ses_func = _internet_create_session,
+//		.__disconn_func = _internet_disconn,
+//		.__run_func = _internet_run,
+//
+//	},
+//
+//	[NT_INTRANET] = {
+//		.__init_func = _intranet_init,
+//		.__destroy_func = _intranet_destroy,
+//
+//		.__create_acc_func = _intranet_create_acceptor,
+//		.__destroy_acc_func = _intranet_destroy_acceptor,
+//
+//		.__create_ses_func = _intranet_create_session,
+//		.__disconn_func = _intranet_disconn,
+//		.__run_func = _intranet_run,
+//
+//	},
+//};
 
 
 static inline struct _inet_impl* _conv_inet_impl(struct net_struct* inet)
@@ -236,10 +242,10 @@ static inline struct _ses_impl* _conv_ses_dln(struct dlnode* dln)
 	return (struct _ses_impl*)((unsigned long)dln - (unsigned long)&((struct _ses_impl*)(0))->_lst_node);
 }
 
-static inline struct _poll_obj* _conv_poll_obj_rbn(struct rbnode* rbn)
-{
-	return (struct _poll_obj*)((unsigned long)rbn - (unsigned long)&((struct _poll_obj*)(0))->_rbn);
-}
+//static inline struct _poll_obj* _conv_poll_obj_rbn(struct rbnode* rbn)
+//{
+//	return (struct _poll_obj*)((unsigned long)rbn - (unsigned long)&((struct _poll_obj*)(0))->_rbn);
+//}
 
 static inline void _sei_free_buf(struct _ses_impl* sei)
 {
@@ -303,13 +309,13 @@ static void _sei_dtor(void* ptr)
 	_sei_free_buf(sei);
 }
 
-static void _poll_obj_ctor(void* ptr)
-{
-	struct _poll_obj* obj = (struct _poll_obj*)ptr;
-
-	obj->_obj = 0;
-	rb_fillnew(&obj->_rbn);
-}
+//static void _poll_obj_ctor(void* ptr)
+//{
+//	struct _poll_obj* obj = (struct _poll_obj*)ptr;
+//
+//	obj->_obj = 0;
+//	rb_fillnew(&obj->_rbn);
+//}
 
 static inline long _write_send_buf(struct _ses_impl* sei, const char* data, int datalen)
 {
@@ -362,7 +368,7 @@ static inline unsigned int _max_fd_count(struct _inet_impl* inet)
 	return inet->_the_net.cfg.nr_acceptor + inet->_the_net.cfg.nr_session;
 }
 
-static struct _inet_impl* _net_create(const struct net_config* cfg, const struct net_ops* ops, struct _nt_ops* handler)
+static struct _inet_impl* _net_create(const struct net_config* cfg, const struct net_ops* ops/*, struct _nt_ops* handler*/)
 {
 	long rslt;
 	struct _inet_impl* inet;
@@ -387,7 +393,7 @@ static struct _inet_impl* _net_create(const struct net_config* cfg, const struct
 	inet->_the_net.ops.func_recv = ops->func_recv;
 	inet->_the_net.ops.func_disconn = ops->func_disconn;
 
-	inet->_handler = handler;
+//	inet->_handler = handler;
 
 	pool_size = objpool_mem_usage(cfg->nr_acceptor, sizeof(struct _acc_impl));
 	pool_acc = malloc(pool_size);
@@ -436,12 +442,12 @@ error_ret:
 	return -1;
 }
 
-static long _intranet_init(struct _inet_impl* inet)
-{
-	rb_init(&inet->_po_rbt, 0);
-	inet->_po_cnt = 0;
-	return 0;
-}
+//static long _intranet_init(struct _inet_impl* inet)
+//{
+//	rb_init(&inet->_po_rbt, 0);
+//	inet->_po_cnt = 0;
+//	return 0;
+//}
 
 static long _net_destroy(struct _inet_impl* inet)
 {
@@ -456,7 +462,8 @@ static long _net_destroy(struct _inet_impl* inet)
 		rmv_dln = dln;
 		dln = dln->next;
 
-		(*inet->_handler->__destroy_acc_func)(aci);
+//		(*inet->_handler->__destroy_acc_func)(aci);
+		_internet_destroy_acceptor(aci);
 		lst_remove(&inet->_acc_list, rmv_dln);
 	}
 
@@ -497,18 +504,18 @@ error_ret:
 	return -1;
 }
 
-static long _intranet_destroy(struct _inet_impl* inet)
-{
-	long rslt;
-	struct dlnode *dln, *rmv_dln;
-
-	rslt = _net_destroy(inet);
-	if(rslt < 0) goto error_ret;
-
-	return 0;
-error_ret:
-	return -1;
-}
+//static long _intranet_destroy(struct _inet_impl* inet)
+//{
+//	long rslt;
+//	struct dlnode *dln, *rmv_dln;
+//
+//	rslt = _net_destroy(inet);
+//	if(rslt < 0) goto error_ret;
+//
+//	return 0;
+//error_ret:
+//	return -1;
+//}
 
 static struct _acc_impl* _net_create_acc(struct _inet_impl* inet, unsigned int ip, unsigned short port)
 {
@@ -578,37 +585,37 @@ error_ret:
 	return 0;
 }
 
-static struct _acc_impl* _intranet_create_acceptor(struct _inet_impl* inet, unsigned int ip, unsigned short port)
-{
-	long rslt;
-	struct _acc_impl* aci;
-	struct _poll_obj* poll_obj;
-
-	aci = _net_create_acc(inet, ip, port);
-	err_exit(!aci, "intranet: net create acc failed.");
-
-//	poll_obj = mm_cache_alloc(__the_poll_obj_zone);
-	poll_obj = malloc(sizeof(struct _poll_obj));
-	err_exit(!poll_obj, "intranet: create poll obj failed.");
-
-	aci->_obj = poll_obj;
-	poll_obj->_obj = aci;
-	poll_obj->_rbn.key = (void*)(long)aci->_sock_fd;
-
-	rslt = rb_insert(&inet->_po_rbt, &poll_obj->_rbn);
-	err_exit(rslt < 0, "intranet: insert poll obj failed");
-
-	++inet->_po_cnt;
-
-	return aci;
-error_ret:
-	if(poll_obj)
-		free(poll_obj);
-//		mm_cache_free(__the_poll_obj_zone, poll_obj);
-
-	_intranet_destroy_acceptor(aci);
-	return 0;
-}
+//static struct _acc_impl* _intranet_create_acceptor(struct _inet_impl* inet, unsigned int ip, unsigned short port)
+//{
+//	long rslt;
+//	struct _acc_impl* aci;
+//	struct _poll_obj* poll_obj;
+//
+//	aci = _net_create_acc(inet, ip, port);
+//	err_exit(!aci, "intranet: net create acc failed.");
+//
+////	poll_obj = mm_cache_alloc(__the_poll_obj_zone);
+//	poll_obj = malloc(sizeof(struct _poll_obj));
+//	err_exit(!poll_obj, "intranet: create poll obj failed.");
+//
+//	aci->_obj = poll_obj;
+//	poll_obj->_obj = aci;
+//	poll_obj->_rbn.key = (void*)(long)aci->_sock_fd;
+//
+//	rslt = rb_insert(&inet->_po_rbt, &poll_obj->_rbn);
+//	err_exit(rslt < 0, "intranet: insert poll obj failed");
+//
+//	++inet->_po_cnt;
+//
+//	return aci;
+//error_ret:
+//	if(poll_obj)
+//		free(poll_obj);
+////		mm_cache_free(__the_poll_obj_zone, poll_obj);
+//
+//	_intranet_destroy_acceptor(aci);
+//	return 0;
+//}
 
 static long _net_destroy_acc(struct _acc_impl* aci)
 {
@@ -638,23 +645,23 @@ error_ret:
 	return -1;
 }
 
-static long _intranet_destroy_acceptor(struct _acc_impl* aci)
-{
-	long rslt;
-	struct _inet_impl* inet = aci->_inet;
-	struct rbnode* rbn;
-
-	rbn = rb_remove(&inet->_po_rbt, &aci->_obj->_rbn);
-	err_exit(!rbn, "intranet destoy acc failed: remove rb node");
-
-//	mm_cache_free(__the_poll_obj_zone, aci->_obj);
-	free(aci->_obj);
-	aci->_obj = 0;
-
-	return _net_destroy_acc(aci);
-error_ret:
-	return -1;
-}
+//static long _intranet_destroy_acceptor(struct _acc_impl* aci)
+//{
+//	long rslt;
+//	struct _inet_impl* inet = aci->_inet;
+//	struct rbnode* rbn;
+//
+//	rbn = rb_remove(&inet->_po_rbt, &aci->_obj->_rbn);
+//	err_exit(!rbn, "intranet destoy acc failed: remove rb node");
+//
+////	mm_cache_free(__the_poll_obj_zone, aci->_obj);
+//	free(aci->_obj);
+//	aci->_obj = 0;
+//
+//	return _net_destroy_acc(aci);
+//error_ret:
+//	return -1;
+//}
 
 static struct _ses_impl* _net_create_session(struct _inet_impl* inet, int socket_fd)
 {
@@ -719,59 +726,57 @@ error_ret:
 	return 0;
 }
 
-static struct _ses_impl* _intranet_create_session(struct _inet_impl* inet, int socket_fd)
-{
-	long rslt;
-	struct _ses_impl* sei;
-	struct _poll_obj* poll_obj;
+//static struct _ses_impl* _intranet_create_session(struct _inet_impl* inet, int socket_fd)
+//{
+//	long rslt;
+//	struct _ses_impl* sei;
+//	struct _poll_obj* poll_obj;
+//
+//	sei = _net_create_session(inet, socket_fd);
+//	err_exit(!sei, "intranet create session error.");
+//
+////	poll_obj = mm_cache_alloc(__the_poll_obj_zone);
+//	poll_obj = malloc(sizeof(struct _poll_obj));
+//	err_exit(!poll_obj, "intranet: create session  poll obj failed.");
+//
+//	sei->_obj = poll_obj;
+//	poll_obj->_obj = sei;
+//	poll_obj->_rbn.key = (void*)(long)sei->_sock_fd;
+//
+//	rslt = rb_insert(&inet->_po_rbt, &poll_obj->_rbn);
+//	err_exit(rslt < 0, "intranet: insert session poll obj failed");
+//
+//	++inet->_po_cnt;
+//
+//	return sei;
+//error_ret:
+//	if(poll_obj)
+//	{
+//		struct rbnode* hot;
+//		struct rbnode* rbn = rb_search(&inet->_po_rbt, (void*)(long)socket_fd, &hot);
+//		struct _ses_impl* si = (struct _ses_impl*)((struct _poll_obj*)_conv_poll_obj_rbn(rbn))->_obj;
+//		printf("si state: %d\n", si->_state);
+//
+//		free(poll_obj);
+////		mm_cache_free(__the_poll_obj_zone, poll_obj);
+//	}
+//	if(sei)
+//		_net_close(sei);
+//	return 0;
+//}
 
-	sei = _net_create_session(inet, socket_fd);
-	err_exit(!sei, "intranet create session error.");
-
-//	poll_obj = mm_cache_alloc(__the_poll_obj_zone);
-	poll_obj = malloc(sizeof(struct _poll_obj));
-	err_exit(!poll_obj, "intranet: create session  poll obj failed.");
-
-	sei->_obj = poll_obj;
-	poll_obj->_obj = sei;
-	poll_obj->_rbn.key = (void*)(long)sei->_sock_fd;
-
-	rslt = rb_insert(&inet->_po_rbt, &poll_obj->_rbn);
-	err_exit(rslt < 0, "intranet: insert session poll obj failed");
-
-	++inet->_po_cnt;
-
-	return sei;
-error_ret:
-	if(poll_obj)
-	{
-		struct rbnode* hot;
-		struct rbnode* rbn = rb_search(&inet->_po_rbt, (void*)(long)socket_fd, &hot);
-		struct _ses_impl* si = (struct _ses_impl*)((struct _poll_obj*)_conv_poll_obj_rbn(rbn))->_obj;
-		printf("si state: %d\n", si->_state);
-
-		free(poll_obj);
-//		mm_cache_free(__the_poll_obj_zone, poll_obj);
-	}
-	if(sei)
-		_net_close(sei);
-	return 0;
-}
-
-struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops, int net_type)
+struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops)
 {
 	long rslt;
 	struct _inet_impl* inet;
 
 	if(!cfg || !ops) goto error_ret;
 
-	if(net_type < 0 || net_type >= NT_COUNT)
-		goto error_ret;
-
-	inet = _net_create(cfg, ops, &__net_ops[net_type]);
+	inet = _net_create(cfg, ops);
 	err_exit(!inet, "create net error.");
 
-	rslt = (*inet->_handler->__init_func)(inet);
+//	rslt = (*inet->_handler->__init_func)(inet);
+	rslt = _internet_init(inet);
 	err_exit(rslt < 0, "init net error.");
 
 	signal(SIGPIPE, SIG_IGN);
@@ -788,7 +793,8 @@ long net_destroy(struct net_struct* net)
 
 	inet = _conv_inet_impl(net);
 
-	return (*inet->_handler->__destroy_func)(inet);
+//	return (*inet->_handler->__destroy_func)(inet);
+	return _internet_destroy(inet);
 error_ret:
 	return -1;
 }
@@ -801,7 +807,8 @@ struct acceptor* net_create_acceptor(struct net_struct* net, unsigned int ip, un
 	if(!net) goto error_ret;
 	inet = _conv_inet_impl(net);
 
-	aci = (*inet->_handler->__create_acc_func)(inet, ip, port);
+//	aci = (*inet->_handler->__create_acc_func)(inet, ip, port);
+	aci = _internet_create_acceptor(inet, ip, port);
 	err_exit(!aci, "create acceptor error.");
 
 	return &aci->_the_acc;
@@ -819,7 +826,8 @@ long net_destroy_acceptor(struct acceptor* acc)
 	aci = _conv_acc_impl(acc);
 	inet = aci->_inet;
 
-	return (*inet->_handler->__destroy_acc_func)(aci);
+//	return (*inet->_handler->__destroy_acc_func)(aci);
+	return _internet_destroy_acceptor(aci);
 error_ret:
 	return -1;
 }
@@ -839,7 +847,8 @@ static long _net_on_acc(struct _acc_impl* aci)
 
 	err_exit(new_sock < 0, "accept error: (%d:%s)", errno, strerror(errno));
 
-	sei = (*inet->_handler->__create_ses_func)(inet, new_sock);
+//	sei = (*inet->_handler->__create_ses_func)(inet, new_sock);
+	sei = _internet_create_session(inet, new_sock);
 	err_exit(!sei, "accept: create session error.");
 
 	sei->_debug_type = 1;
@@ -877,8 +886,9 @@ static long _net_close(struct _ses_impl* sei)
 
 	if(sei->_sock_fd != 0)
 	{
-		if(inet->_handler->__disconn_func)
-			(*inet->_handler->__disconn_func)(sei);
+//		if(inet->_handler->__disconn_func)
+//			(*inet->_handler->__disconn_func)(sei);
+		_internet_disconn(sei);
 
 		close(sei->_sock_fd);
 		sei->_sock_fd = 0;
@@ -1061,23 +1071,23 @@ error_ret:
 	return -1;
 }
 
-static long _intranet_disconn(struct _ses_impl* sei)
-{
-	long rslt;
-	struct _inet_impl* inet = sei->_inet;
-	struct rbnode* rbn;
-
-	rbn = rb_remove(&inet->_po_rbt, sei->_obj->_rbn.key);
-	err_exit(!rbn, "intranet disconn: remove rb failed");
-
-//	mm_cache_free(__the_poll_obj_zone, sei->_obj);
-	free(sei->_obj);
-	sei->_obj = 0;
-
-	return 0;
-error_ret:
-	return -1;
-}
+//static long _intranet_disconn(struct _ses_impl* sei)
+//{
+//	long rslt;
+//	struct _inet_impl* inet = sei->_inet;
+//	struct rbnode* rbn;
+//
+//	rbn = rb_remove(&inet->_po_rbt, sei->_obj->_rbn.key);
+//	err_exit(!rbn, "intranet disconn: remove rb failed");
+//
+////	mm_cache_free(__the_poll_obj_zone, sei->_obj);
+//	free(sei->_obj);
+//	sei->_obj = 0;
+//
+//	return 0;
+//error_ret:
+//	return -1;
+//}
 
 static inline long _net_disconn(struct _ses_impl* sei)
 {
@@ -1118,7 +1128,8 @@ long net_run(struct net_struct* net, int timeout)
 	if(!net) goto error_ret;
 	inet = _conv_inet_impl(net);
 
-	return (*inet->_handler->__run_func)(inet, timeout);
+//	return (*inet->_handler->__run_func)(inet, timeout);
+	return _internet_run(inet, timeout);
 error_ret:
 	return -1;
 }
@@ -1159,82 +1170,82 @@ error_ret:
 
 }
 
-static long _intranet_run(struct _inet_impl* inet, int timeout)
-{
-	long rslt, cnt = 0;
-	struct pollfd pofds[inet->_po_cnt];
-	struct dlnode* dln;
-	struct _acc_impl* aci;
-	struct _ses_impl* sei;
-	struct rbnode* hot, *rbn;
-	struct _poll_obj* poll_obj;
-
-	dln = inet->_acc_list.head.next;
-	while(dln != &inet->_acc_list.tail)
-	{
-		aci = _conv_acc_dln(dln);
-
-		pofds[cnt].fd = aci->_sock_fd;
-		pofds[cnt].events = POLLIN;
-		pofds[cnt].revents = 0;
-
-		++cnt;
-
-		dln = dln->next;
-	}
-
-	dln = inet->_ses_list.head.next;
-	while(dln != &inet->_ses_list.tail)
-	{
-		sei = _conv_ses_dln(dln);
-
-		pofds[cnt].fd = sei->_sock_fd;
-		pofds[cnt].events = POLLIN | POLLOUT | POLLRDHUP | POLLERR;
-		pofds[cnt].revents = 0;
-
-		++cnt;
-
-		dln = dln->next;
-	}
-
-	err_exit(cnt > inet->_po_cnt, "intranet run: overflow.");
-
-	cnt = poll(pofds, cnt, timeout);
-	if(cnt < 0) goto error_ret;
-
-	for(int i = 0; i < cnt; ++i)
-	{
-		unsigned int type_info;
-
-		rbn = rb_search(&inet->_po_rbt, (void*)(long)pofds[i].fd, &hot);
-		err_exit(!rbn, "intranet run: can not find fd: %d.", pofds[i].fd);
-
-		poll_obj = _conv_poll_obj_rbn(rbn);
-
-		type_info = *(unsigned int*)(poll_obj->_obj);
-
-		if(type_info == ACC_TYPE_INFO)
-		{
-			_net_on_acc((struct _acc_impl*)poll_obj->_obj);
-		}
-		else if(type_info == SES_TYPE_INFO)
-		{
-			struct _ses_impl* sei = (struct _ses_impl*)poll_obj->_obj;
-
-			if(pofds[i].revents & POLLOUT)
-				_net_on_send(sei);
-			if(pofds[i].revents & POLLIN)
-				_net_on_recv(sei);
-			if(pofds[i].revents & POLLERR)
-				_net_on_error(sei);
-		}
-
-	}
-
-	return 0;
-error_ret:
-	return -1;
-}
+//static long _intranet_run(struct _inet_impl* inet, int timeout)
+//{
+//	long rslt, cnt = 0;
+//	struct pollfd pofds[inet->_po_cnt];
+//	struct dlnode* dln;
+//	struct _acc_impl* aci;
+//	struct _ses_impl* sei;
+//	struct rbnode* hot, *rbn;
+//	struct _poll_obj* poll_obj;
+//
+//	dln = inet->_acc_list.head.next;
+//	while(dln != &inet->_acc_list.tail)
+//	{
+//		aci = _conv_acc_dln(dln);
+//
+//		pofds[cnt].fd = aci->_sock_fd;
+//		pofds[cnt].events = POLLIN;
+//		pofds[cnt].revents = 0;
+//
+//		++cnt;
+//
+//		dln = dln->next;
+//	}
+//
+//	dln = inet->_ses_list.head.next;
+//	while(dln != &inet->_ses_list.tail)
+//	{
+//		sei = _conv_ses_dln(dln);
+//
+//		pofds[cnt].fd = sei->_sock_fd;
+//		pofds[cnt].events = POLLIN | POLLOUT | POLLRDHUP | POLLERR;
+//		pofds[cnt].revents = 0;
+//
+//		++cnt;
+//
+//		dln = dln->next;
+//	}
+//
+//	err_exit(cnt > inet->_po_cnt, "intranet run: overflow.");
+//
+//	cnt = poll(pofds, cnt, timeout);
+//	if(cnt < 0) goto error_ret;
+//
+//	for(int i = 0; i < cnt; ++i)
+//	{
+//		unsigned int type_info;
+//
+//		rbn = rb_search(&inet->_po_rbt, (void*)(long)pofds[i].fd, &hot);
+//		err_exit(!rbn, "intranet run: can not find fd: %d.", pofds[i].fd);
+//
+//		poll_obj = _conv_poll_obj_rbn(rbn);
+//
+//		type_info = *(unsigned int*)(poll_obj->_obj);
+//
+//		if(type_info == ACC_TYPE_INFO)
+//		{
+//			_net_on_acc((struct _acc_impl*)poll_obj->_obj);
+//		}
+//		else if(type_info == SES_TYPE_INFO)
+//		{
+//			struct _ses_impl* sei = (struct _ses_impl*)poll_obj->_obj;
+//
+//			if(pofds[i].revents & POLLOUT)
+//				_net_on_send(sei);
+//			if(pofds[i].revents & POLLIN)
+//				_net_on_recv(sei);
+//			if(pofds[i].revents & POLLERR)
+//				_net_on_error(sei);
+//		}
+//
+//	}
+//
+//	return 0;
+//error_ret:
+//	return -1;
+//}
 
 struct session* net_connect(struct net_struct* net, unsigned int ip, unsigned short port)
 {
@@ -1252,7 +1263,8 @@ struct session* net_connect(struct net_struct* net, unsigned int ip, unsigned sh
 	new_sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 	if(new_sock < 0) goto error_ret;
 
-	sei = (*inet->_handler->__create_ses_func)(inet, new_sock);
+//	sei = (*inet->_handler->__create_ses_func)(inet, new_sock);
+	sei = _internet_create_session(inet, new_sock);
 	if(!sei) goto error_ret;
 
 	sei->_debug_type = 2;

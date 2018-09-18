@@ -1456,6 +1456,7 @@ void test_co()
 	{
 		printf("---- test_co: reloaded.\n");
 		ts = mm_load_globl_data();
+		err_exit(!ts, "ts failed.");
 	}
 
 	co_run(ts->_co, ts);
@@ -1554,11 +1555,14 @@ void test_pb()
 int main(void)
 {
 	long rslt;
+
 //	unsigned long i = test_asm_align8(10);
 //	printf("%lu\n", i);
 //
 	unsigned long seed = time(0);
 	srandom(seed);
+
+//	getchar();
 
 	printf("popcnt: %d\n", popcnt32(-1));
 
@@ -1570,14 +1574,14 @@ int main(void)
 
 //	test_pb();
 
-	rslt = init_mm(201);
+	rslt = init_mm(101);
 	if(rslt < 0) goto error_ret;
 
-//	net_test_server(1);
+	net_test_server(1);
 
 	init_timer();
 
-	test_rpc();
+//	test_rpc();
 
 //	test_timer();
 //

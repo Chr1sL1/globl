@@ -17,6 +17,9 @@
 #define cache_line_size	64
 #define __cache_aligned__	__attribute__((aligned(cache_line_size)))
 
+#define mfence	asm volatile ("mfence")
+#define lfence	asm volatile ("lfence")
+#define sfence	asm volatile ("sfence")
 
 unsigned long round_up_2power(unsigned long val);
 unsigned long round_down_2power(unsigned long val);

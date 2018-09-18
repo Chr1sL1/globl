@@ -20,13 +20,13 @@ typedef long (*on_conn_func)(struct session* se);
 typedef long (*on_disconn_func)(struct session* se);
 typedef long (*on_recv_func)(struct session* se, const void* buf, long len);
 
-enum NET_TYPE
-{
-	NT_INTERNET,
-	NT_INTRANET,
-
-	NT_COUNT,
-};
+//enum NET_TYPE
+//{
+//	NT_INTERNET,
+//	NT_INTRANET,
+//
+//	NT_COUNT,
+//};
 
 struct net_config
 {
@@ -57,7 +57,7 @@ struct net_struct
 	struct net_ops ops;
 };
 
-struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops, int net_type);
+struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops);
 long net_destroy(struct net_struct* net);
 
 struct acceptor* net_create_acceptor(struct net_struct* net, unsigned int ip, unsigned short port);

@@ -343,7 +343,7 @@ long net_test_server(int silent)
 		err_exit(!fp, "redirect stderr failed");
 	}
 
-	net = net_create(&__cfg, &ops, NT_INTERNET);
+	net = net_create(&__cfg, &ops);
 	err_exit(!net, "create net failed.");
 
 	acc = net_create_acceptor(net, 0, 7099);
