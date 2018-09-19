@@ -20,6 +20,7 @@
 #define mfence	asm volatile ("mfence")
 #define lfence	asm volatile ("lfence")
 #define sfence	asm volatile ("sfence")
+#define spin_wait asm volatile ("pause")
 
 unsigned long round_up_2power(unsigned long val);
 unsigned long round_down_2power(unsigned long val);
