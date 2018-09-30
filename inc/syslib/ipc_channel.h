@@ -2,6 +2,7 @@
 #define __ipc_channel_h__
 
 struct ipc_channel;
+struct ipc_local_port;
 
 struct ipc_channel_buf
 {

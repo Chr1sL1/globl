@@ -1,10 +1,37 @@
 #include "syslib/ipc_channel.h"
 #include "syslib/misc.h"
 #include "syslib/shmem.h"
+#include "syslib/slist.h"
+
+struct ipc_msg_free_node
+{
+	unsigned int _msg_idx;
+	int _next_free_idx;
+};
+
+struct ipc_msg_pool
+{
+};
+
+struct ipc_msg_queue_node
+{
+	unsigned int _msg_size_order;
+	unsigned int _msg_block_idx;
+};
 
 struct ipc_channel
 {
-	struct shmm_blk*  _shm;
+	unsigned int _magic_tag;
+
+	volatile unsigned int _read_ptr;
+	volatile unsigned int _write_ptr;
+
+	unsigned int _msg_queue_len;
+	struct ipc_msg_queue_node _msg_queue_node[0];
+};
+
+struct ipc_local_port
+{
 
 };
 
@@ -43,6 +70,7 @@ error_ret:
 
 struct ipc_channel_buf* ipc_channel_fetch_buf(struct ipc_channel* channel, int size)
 {
+	int actual_size = round_up_2power(size);
 
 error_ret:
 	return 0;
