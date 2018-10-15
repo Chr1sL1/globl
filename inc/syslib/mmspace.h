@@ -33,7 +33,8 @@ enum MM_AREA_TYPE
 {
 	MM_AREA_BEGIN = 0,
 
-	MM_AREA_NUBBLE = MM_AREA_BEGIN,		//< small memory block
+	MM_AREA_SPACE = MM_AREA_BEGIN,
+	MM_AREA_NUBBLE,						//< small memory block
 	MM_AREA_PAGE,						//< page-aligned memory block
 	MM_AREA_CACHE,						//< for mmcache object
 	MM_AREA_PERSIS,						//< for persistent data
@@ -51,7 +52,8 @@ enum MM_INIT_RESULT
 
 struct mm_space_config
 {
-	int sys_shmm_key;
+	int app_type;
+	int app_idx;
 	int try_huge_page;
 	int max_shmm_count;
 

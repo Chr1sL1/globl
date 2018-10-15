@@ -32,12 +32,9 @@ struct mm_config
 typedef void* (*mm_ops_create)(void*, struct mm_config*);
 typedef void* (*mm_ops_load)(void*);
 typedef void (*mm_ops_destroy)(void*);
-
 typedef void* (*mm_ops_alloc)(void*, unsigned long);
 typedef long (*mm_ops_free)(void*, void*);
-
 typedef void (*mm_ops_counts)(void*, unsigned long*, unsigned long*);
-
 
 struct mm_ops
 {
@@ -51,37 +48,9 @@ struct mm_ops
 	mm_ops_counts counts_func;
 };
 
-enum MM_SHM_TYPE
-{
-	MM_SHM_MEMORY_SPACE,
-	MM_SHM_IPC,
 
-	MM_SHM_COUNT, // should be no more than 15.
-};
-
-
-#pragma pack(1)
-union shmm_sub_key
-{
-	struct
-	{
-		unsigned char ar_idx;
-		unsigned char ar_type;
-	};
-
-	struct
-	{
-		unsigned short ipc_channel;
-	};
-
-	unsigned short sub_key;
-};
-#pragma pack()
-
-// shm_type should be no more than MM_SHM_COUNT.
-// sys_id should be no more than 8191.
-//
-int mm_create_shm_key(int shm_type, int sys_id, const union shmm_sub_key* sub_key);
+int create_mmspace_key(int area_type, int area_idx, int app_type, int app_idx);
+int create_ipc_channel_key(int service_type, int service_idx);
 
 #endif
 

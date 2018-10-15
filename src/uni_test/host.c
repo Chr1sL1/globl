@@ -1166,7 +1166,9 @@ void test_mm(void)
 	struct mm_space_config cfg;
 	struct mmcache* mmz;
 
-	cfg.sys_shmm_key = 103;
+	cfg.app_type = 1;
+	cfg.app_idx = 1;
+
 	cfg.try_huge_page = 0;
 	cfg.max_shmm_count = 8;
 
@@ -1280,7 +1282,8 @@ long init_mm(int key)
 	long rslt;
 	struct mm_space_config cfg;
 
-	cfg.sys_shmm_key = key;
+	cfg.app_type = 1;
+	cfg.app_idx = key;
 	cfg.try_huge_page = 0;
 	cfg.max_shmm_count = 32;
 
@@ -1551,6 +1554,43 @@ void test_pb()
 	printf(">>>>>> >>>>>>   msg.value1: %d, msg.value2: %ld\n", msg.value1, msg.value2);
 }
 
+#pragma pack(1)
+
+union shm_key
+{
+	struct
+	{
+		unsigned reserved : 16;
+
+		struct
+		{
+			union
+			{
+				struct
+				{
+					unsigned area_idx : 4;
+					unsigned area_type : 8;
+				};
+
+				struct
+				{
+					unsigned service_idx : 6;
+					unsigned service_type : 6;
+				};
+			};
+
+			unsigned type : 4;
+		};
+
+	};
+
+	int the_key;
+};
+
+
+
+#pragma pack()
+
 
 int main(void)
 {
@@ -1572,14 +1612,35 @@ int main(void)
 	memset(&bs, 0, sizeof(bs));
 	set_bit(&bs, 100);
 
+	union shm_key key1;
+	union shm_key key2;
+
+	key1.the_key = 0;
+	key2.the_key = 0;
+	key2.reserved = 0;
+	key2.reserved = 0;
+
+	key1.type = 3;
+	key1.area_type = 10;
+	key1.area_idx = 12;
+
+	key2.type = 5;
+	key2.service_type = 23;
+	key2.service_idx = 45;
+
+//	printf("sub keys: 0x%x, 0x%x\n", key1.sub_key, key2.sub_key);
+	printf("keys: 0x%x, 0x%x\n", key1.the_key, key2.the_key);
+	printf("key1 type: %d, area_type: %d, area_idx: %d\n", key1.type, key1.area_type, key1.area_idx);
+	printf("key2 type: %d, s_type: %d, s_idx: %d\n", key2.type, key2.service_type, key2.service_idx);
+
 //	test_pb();
 
-	rslt = init_mm(101);
-	if(rslt < 0) goto error_ret;
+//	rslt = init_mm(101);
+//	if(rslt < 0) goto error_ret;
 
-	net_test_server(1);
+//	net_test_server(1);
 
-	init_timer();
+//	init_timer();
 
 //	test_rpc();
 
@@ -1587,7 +1648,7 @@ int main(void)
 //
 //	test_co();
 
-	mm_uninitialize();
+//	mm_uninitialize();
 
 //	test_shmm();
 

@@ -4,6 +4,7 @@
 #include "syslib/rbtree.h"
 #include "syslib/misc.h"
 #include "syslib/mmops.h"
+#include "syslib/shm_key.h"
 #include "syslib/hash.h"
 
 #include <string.h>
@@ -46,6 +47,8 @@ struct _mm_space_impl
 	unsigned long _mm_label;
 	int _next_shmm_key;
 	int _total_shmm_count;
+	int app_type;
+	int app_idx;
 
 	struct shmm_blk* _this_shm;
 	struct mm_space_config _cfg;
@@ -452,11 +455,6 @@ error_ret:
 // mmspace:
 //
 
-static inline int _make_shmm_key(struct _mm_space_impl* mm, int ar_type, int area_idx)
-{
-	return  ((mm->_cfg.sys_shmm_key) << 16) + (ar_type << 8) + area_idx;
-}
-
 static inline struct shmm_blk* _conv_shmm_from_rbn(struct rbnode* rbn)
 {
 	return (struct shmm_blk*)((unsigned long)rbn - (unsigned long)&((struct shmm_blk*)(0))->rb_node);
@@ -521,21 +519,18 @@ error_ret:
 static long _mm_create_section(struct _mm_space_impl* mm, int ar_type)
 {
 	long rslt;
-	int shmm_key;
+	int shm_key;
 	struct _mm_area_impl* ar;
 	struct _mm_section_impl* sec = 0;
 	struct shmm_blk* shm = 0;
-	union shmm_sub_key sub_key;
 	void* addr_begin;
 
 	err_exit(mm->_total_shmm_count >= mm->_cfg.max_shmm_count, "too much shmm section.");
 
-	sub_key.ar_type = ar_type;
-	sub_key.ar_idx = ++mm->_next_shmm_key;
+	shm_key = create_mmspace_key(ar_type, ++mm->_next_shmm_key, mm->_cfg.app_type, mm->_cfg.app_idx);
+	err_exit(shm_key <= 0, "create section key failed.");
 
-	shmm_key = mm_create_shm_key(MM_SHM_MEMORY_SPACE, mm->_cfg.sys_shmm_key, &sub_key);
-
-	shm = shmm_create(shmm_key, mm->_cfg.mm_cfg[ar_type].total_size, mm->_cfg.try_huge_page);
+	shm = shmm_create(shm_key, mm->_cfg.mm_cfg[ar_type].total_size, mm->_cfg.try_huge_page);
 	err_exit(!shm, "create shmm error.");
 
 	ar = &mm->_area_list[ar_type];
@@ -567,12 +562,12 @@ static long _mm_create_section(struct _mm_space_impl* mm, int ar_type)
 	ar->_free_section = sec;
 
 	mm->_shmm_save_list[mm->_total_shmm_count]._base_addr = shm;
-	mm->_shmm_save_list[mm->_total_shmm_count]._key = shmm_key;
+	mm->_shmm_save_list[mm->_total_shmm_count]._key = shm_key;
 	mm->_shmm_save_list[mm->_total_shmm_count]._size = mm->_cfg.mm_cfg[ar_type].total_size;
 
 	++mm->_total_shmm_count;
 
-	printf("new section shmm_key: 0x%x, size: %lu\n", shmm_key, mm->_cfg.mm_cfg[ar_type].total_size);
+	printf("new section shm_key: 0x%x, size: %lu\n", shm_key, mm->_cfg.mm_cfg[ar_type].total_size);
 
 	return 0;
 error_ret:
@@ -585,6 +580,7 @@ error_ret:
 long mm_initialize(struct mm_space_config* cfg)
 {
 	long rslt;
+	int shm_key;
 	unsigned long shm_size;
 	struct shmm_blk* shm;
 	struct _mm_space_impl* mm;
@@ -598,8 +594,10 @@ long mm_initialize(struct mm_space_config* cfg)
 
 	shm_size = sizeof(struct _mm_space_impl) + sizeof(struct _mm_shmm_save) * cfg->max_shmm_count + sizeof(struct dlist) * ZONE_HASH_SIZE;
 
-//	shm = shmm_open_raw(cfg->sys_shmm_key, (void*)cfg->sys_begin_addr);
-	shm = shmm_reload(cfg->sys_shmm_key);
+	shm_key = create_mmspace_key(0, 0, cfg->app_type, cfg->app_idx);
+	err_exit(shm_key <= 0, "create mmspace key failed.");
+
+	shm = shmm_reload(shm_key);
 	if(shm)
 	{
 		addr_begin = shmm_begin_addr(shm);
@@ -617,7 +615,7 @@ long mm_initialize(struct mm_space_config* cfg)
 		goto succ_ret;
 	}
 
-	shm = shmm_create(cfg->sys_shmm_key, shm_size, cfg->try_huge_page);
+	shm = shmm_create(shm_key, shm_size, cfg->try_huge_page);
 	if(!shm) goto error_ret;
 
 	addr_begin = shmm_begin_addr(shm);

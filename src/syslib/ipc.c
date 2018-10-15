@@ -47,11 +47,11 @@ error_ret:
 struct ipc_peer* ipc_create(int channel_id, unsigned long buffer_size, int use_huge_tlb)
 {
 	long rslt;
-	int shmm_key;
+	int shmm_key = -1;
 	void* addr_begin;
 	void* addr_end;
 	struct _ipc_peer_impl* ipi = 0;
-	union shmm_sub_key sub_key;
+//	union shmm_sub_key sub_key;
 
 	if(channel_id < 0 || buffer_size == 0)
 		goto error_ret;
@@ -62,9 +62,9 @@ struct ipc_peer* ipc_create(int channel_id, unsigned long buffer_size, int use_h
 	ipi = mm_cache_alloc(__the_ipc_zone);
 	if(!ipi) goto error_ret;
 
-	sub_key.ipc_channel = channel_id;
+//	sub_key.ipc_channel = channel_id;
 
-	shmm_key = mm_create_shm_key(MM_SHM_IPC, 0, &sub_key);
+//	shmm_key = mm_create_shm_key(MM_SHM_IPC, 0, &sub_key);
 	if(shmm_key < 0) goto error_ret;
 
 	ipi->_shb = shmm_create(shmm_key, buffer_size, use_huge_tlb);
@@ -96,11 +96,10 @@ error_ret:
 struct ipc_peer* ipc_link(int channel_id)
 {
 	long rslt;
-	int shmm_key;
+	int shmm_key = -1;
 	void* addr_begin;
 	void* addr_end;
 	struct _ipc_peer_impl* ipi = 0;
-	union shmm_sub_key sub_key;
 
 	if(channel_id < 0)
 		goto error_ret;
@@ -111,9 +110,9 @@ struct ipc_peer* ipc_link(int channel_id)
 	ipi = mm_cache_alloc(__the_ipc_zone);
 	if(!ipi) goto error_ret;
 
-	sub_key.ipc_channel = channel_id;
+//	sub_key.ipc_channel = channel_id;
 
-	shmm_key = mm_create_shm_key(MM_SHM_IPC, 0, &sub_key);
+//	shmm_key = mm_create_shm_key(MM_SHM_IPC, 0, &sub_key);
 	if(shmm_key < 0) goto error_ret;
 
 	ipi->_shb = shmm_open(shmm_key, 0);
