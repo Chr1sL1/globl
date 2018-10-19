@@ -7,7 +7,7 @@
 #define err_exit(stmt, msg, ...)\
 	do {\
 		if(unlikely(stmt)){\
-			fprintf(stderr, "<%s:%d> ", __FILE__, __LINE__);\
+			fprintf(stderr, "<%s:%d:%s> ", __FILE__, __LINE__, __FUNCTION__);\
 			fprintf(stderr, msg, ##__VA_ARGS__);\
 			fprintf(stderr, "\n");\
 		goto error_ret;\

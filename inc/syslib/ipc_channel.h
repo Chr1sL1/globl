@@ -8,14 +8,6 @@
 struct ipc_channel;
 struct ipc_local_port;
 
-struct ipc_channel_buf
-{
-	char* buf;
-	unsigned int buf_size;
-	unsigned short prod_service_type;
-	unsigned short prod_service_index;
-};
-
 struct ipc_channel_cfg
 {
 	int cons_service_type;
@@ -31,11 +23,11 @@ int ipc_open_cons_port(int service_type, int service_index);
 
 int ipc_close_port(struct ipc_local_port* local_port);
 
-int ipc_read_sc(struct ipc_channel_buf* channel_buf);
+int ipc_read_sc(char* buf, unsigned int* size, unsigned int* prod_service_type, unsigned int* prod_service_index);
 
-struct ipc_channel_buf* ipc_channel_fetch_buf(struct ipc_local_port* local_port, int size);
-int ipc_write_sp(struct ipc_local_port* local_port, struct ipc_channel_buf* channel_buf);
-int ipc_write_mp(struct ipc_local_port* local_port, struct ipc_channel_buf* channel_buf);
+char* ipc_alloc_write_buf(struct ipc_local_port* local_port, unsigned int size);
+//int ipc_write_sp(struct ipc_local_port* local_port, struct ipc_channel_buf* channel_buf);
+int ipc_write_mp(struct ipc_local_port* local_port, const char* buf, unsigned int size);
 
 #endif
 

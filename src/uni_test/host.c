@@ -1602,6 +1602,11 @@ int main(void)
 	unsigned long seed = time(0);
 	srandom(seed);
 
+
+	struct test_co_struct tcs[10];
+
+	printf("%d\n", &tcs[5] - &tcs[0]);
+
 //	getchar();
 
 	printf("popcnt: %d\n", popcnt32(-1));
