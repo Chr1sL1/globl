@@ -17,10 +17,12 @@ struct ipc_msg_header
 {
 	unsigned int _msg_tag;
 	unsigned int _msg_size;
-	unsigned short _from_service_type;
-	unsigned short _from_service_index;
-	unsigned short _to_service_type;
-	unsigned short _to_service_index;
+	unsigned int _msg_idx;
+
+	unsigned _from_service_type : SHM_SERVICE_TYPE_BITS;
+	unsigned _from_service_index : SHM_SERVICE_INDEX_BITS;
+	unsigned _to_service_type : SHM_SERVICE_TYPE_BITS;
+	unsigned _to_service_index : SHM_SERVICE_INDEX_BITS;
 };
 #pragma pack()
 
@@ -345,6 +347,9 @@ int ipc_read_sc(char* buf, unsigned int* size, unsigned int* prod_service_type, 
 
 	msg_node = &channel->_msg_queue_node[cons_head % channel->_msg_queue_len];
 
+	channel->_cons_ptr_head = cons_next;
+	channel->_cons_ptr_tail = channel->_cons_ptr_head;
+
 	msg_hdr = __read_msg(msg_node, buf, size);
 	err_exit(!msg_hdr, "ipc_read_sc: read msg failed");
 
@@ -367,16 +372,26 @@ error_ret:
 	return 0;
 }
 
-//int ipc_write_sp(struct ipc_local_port* local_port, struct ipc_channel_buf* channel_buf)
-//{
-//
-//error_ret:
-//	return -1;
-//}
-
 int ipc_write_mp(struct ipc_local_port* local_port, const char* buf, unsigned int size)
 {
+	struct ipc_msg_header* msg_header;
+	struct ipc_channel* channel;
+	unsigned long prod_head, prod_next;
 
+	err_exit(local_port == 0, "invalid port.");
+	err_exit(buf == 0, "invalid buf.");
+
+	msg_header = (struct ipc_msg_header*)(buf - sizeof(struct ipc_msg_header));
+
+	err_exit(msg_header->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
+
+	channel = (struct ipc_channel*)shmm_begin_addr(local_port->_shm_channel);
+	err_exit(__check_valid_channel(channel) < 0, "invalid ipc channel.");
+	err_exit(__check_write(channel) < 0, "channel can not write.");
+
+	prod_head = channel->_prod_ptr_head;
+
+	return 0;
 error_ret:
 	return -1;
 }

@@ -11,9 +11,6 @@
 #define SHM_APP_TYPE_BITS		(6)
 #define SHM_APP_INDEX_BITS		(10)
 
-#define SHM_SERVICE_TYPE_BITS	(6)
-#define SHM_SERVICE_INDEX_BITS	(10)
-
 #define SHM_MSG_POOL_ORDER_BITS	(5)
 #define SHM_MSG_POOL_INDEX_BITS	(7)
 
