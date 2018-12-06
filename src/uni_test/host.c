@@ -1337,6 +1337,7 @@ error_ret:
 #define dbg(format, ...) printf(format, __VA_ARGS__)
 
 extern long net_test_server(int);
+extern int test_ipc_channel(void);
 
 struct bit_set
 {
@@ -1637,6 +1638,9 @@ int main(void)
 	printf("keys: 0x%x, 0x%x\n", key1.the_key, key2.the_key);
 	printf("key1 type: %d, area_type: %d, area_idx: %d\n", key1.type, key1.area_type, key1.area_idx);
 	printf("key2 type: %d, s_type: %d, s_idx: %d\n", key2.type, key2.service_type, key2.service_idx);
+
+
+	test_ipc_channel();
 
 //	test_pb();
 

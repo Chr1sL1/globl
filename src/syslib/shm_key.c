@@ -32,6 +32,12 @@ union shm_key
 		{
 			struct
 			{
+				unsigned dummy : 28;
+				unsigned type : SHM_TYPE_BITS;			// 4
+			};
+
+			struct
+			{
 				unsigned app_idx : SHM_APP_INDEX_BITS;
 				unsigned app_type : SHM_APP_TYPE_BITS;
 				unsigned area_idx : SHM_AR_INDEX_BITS;
@@ -41,19 +47,18 @@ union shm_key
 			struct
 			{
 				unsigned service_reserved : 12;
-				unsigned service_idx : SHM_SERVICE_INDEX_BITS;
-				unsigned service_type : SHM_SERVICE_TYPE_BITS;
+				unsigned service_idx : SHM_SERVICE_INDEX_BITS; // 6
+				unsigned service_type : SHM_SERVICE_TYPE_BITS; // 10
 			};
+
 			struct 
 			{
-				unsigned msg_pool_idx : SHM_MSG_POOL_INDEX_BITS;
-				unsigned msg_pool_order : SHM_MSG_POOL_ORDER_BITS;
-				unsigned msg_pool_service_idx : SHM_SERVICE_INDEX_BITS;
-				unsigned msg_pool_service_type : SHM_SERVICE_TYPE_BITS;
+				unsigned msg_pool_idx : SHM_MSG_POOL_INDEX_BITS;	// 5
+				unsigned msg_pool_order : SHM_MSG_POOL_ORDER_BITS;	// 7
+				unsigned msg_pool_service_idx : SHM_SERVICE_INDEX_BITS; // 6
+				unsigned msg_pool_service_type : SHM_SERVICE_TYPE_BITS; // 10
 			};
 		};
-
-		unsigned type : SHM_TYPE_BITS;
 	};
 
 	int the_key;
@@ -63,6 +68,7 @@ union shm_key
 int create_mmspace_key(int area_type, int area_idx, int app_type, int app_idx)
 {
 	union shm_key key;
+	key.the_key = 0;
 	key.type = MM_SHM_MEMORY_SPACE;
 
 	err_exit(area_type >= (1 << SHM_AR_TYPE_BITS), "area_type invalid.");
@@ -83,6 +89,7 @@ error_ret:
 int create_ipc_channel_key(int service_type, int service_idx)
 {
 	union shm_key key;
+	key.the_key = 0;
 	key.type = MM_SHM_IPC;
 
 	err_exit(service_type >= (1 << SHM_SERVICE_TYPE_BITS), "service_type invalid.");
@@ -100,6 +107,7 @@ error_ret:
 int create_msg_pool_key(int service_type, int service_idx, int pool_order, int pool_idx)
 {
 	union shm_key key;
+	key.the_key = 0;
 	key.type = MM_SHM_MSG_POOL;
 
 	err_exit(service_type >= (1 << SHM_SERVICE_TYPE_BITS), "service_type invalid.");
