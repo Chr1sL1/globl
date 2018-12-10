@@ -56,7 +56,7 @@ struct ipc_channel
 struct ipc_msg_free_node
 {
 	unsigned int _msg_idx;
-	volatile unsigned int _next_free_idx;
+	volatile int _next_free_idx;
 };
 
 struct ipc_msg_pool
@@ -184,23 +184,25 @@ static int __msg_pool_create(int key, unsigned int pool_idx, const struct ipc_ch
 	imp->_magic_tag = IPC_MSG_POOL_MAGIC; 
 	imp->_msg_cnt = cfg->message_count[pool_idx];
 	imp->_msg_order = pool_idx + MIN_MSG_SIZE_ORDER;
-	imp->_free_msg_head = 1;
+	imp->_free_msg_head = 0;
 	imp->_free_msg_tail = imp->_msg_cnt - 1;
 
-	p = (char*)imp + sizeof(struct ipc_msg_pool) + cfg->message_count[pool_idx] * sizeof(struct ipc_msg_free_node);
+	p = (char*)imp + sizeof(struct ipc_msg_pool) + imp->_msg_cnt * sizeof(struct ipc_msg_free_node);
 	imp->_guard_msg_hdr = p;
 
-	for(int i = 1; i < imp->_msg_cnt; ++i)
+	for(int i = 0; i < imp->_msg_cnt; ++i)
 	{
 		imp->_free_node_list[i]._msg_idx = i;
 		imp->_free_node_list[i]._next_free_idx = (i + 1) % imp->_msg_cnt;
 
-		p += msg_size * i;
-		msg_hdr = (struct ipc_msg_header*)p;
+		msg_hdr = (struct ipc_msg_header*)(p + msg_size * i);
 
 		msg_hdr->_msg_tag = IPC_MSG_HEADER_MAGIC;
 		msg_hdr->_msg_idx = i;
+
 	}
+
+	imp->_free_node_list[imp->_free_msg_tail]._next_free_idx = -1;
 
 	return 0;
 error_ret:
@@ -290,11 +292,12 @@ static inline int __free_msg_sc(struct ipc_msg_pool* pool, struct ipc_msg_header
 	struct ipc_msg_header* tail_hdr;
 	unsigned int msg_size = (1 << pool->_msg_order);
 
-	err_exit(msg_hdr->_msg_idx == 0 || msg_hdr->_msg_idx >= pool->_msg_cnt, "__free_msg_sc: invalid msg_hdr.");
-	err_exit(pool->_free_node_list[msg_hdr->_msg_idx]._next_free_idx == 0, "__free_msg_sc: invalid msg_hdr.");
+	err_exit(msg_hdr->_msg_idx >= pool->_msg_cnt, "__free_msg_sc: invalid msg_hdr.");
+	err_exit(pool->_free_node_list[msg_hdr->_msg_idx]._next_free_idx >= 0, "__free_msg_sc: invalid msg_hdr.");
 
 	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = msg_hdr->_msg_idx;
 	pool->_free_msg_tail = msg_hdr->_msg_idx;
+	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = -1;
 
 	return 0;
 error_ret:
@@ -428,7 +431,7 @@ error_ret:
 
 char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int size, int from_service_type, int from_service_index)
 {
-	unsigned int pool_idx, free_node, new_header;
+	unsigned int pool_idx, free_node, new_header, tail_node;
 
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
@@ -440,20 +443,27 @@ char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int siz
 
 	do {
 		free_node = msg_pool->_free_msg_head;
-		new_header = msg_pool->_free_node_list[free_node]._next_free_idx;
+		tail_node = msg_pool->_free_msg_tail;
 
-		err_exit(new_header == 0, "invalid header node.");
+		err_exit(free_node == tail_node, "invalid header node.");
+
+		new_header = msg_pool->_free_node_list[free_node]._next_free_idx;
+		err_exit(new_header < 0, "invalid header node.");
+
 		spin_wait;
 	} while(!__cas32(&msg_pool->_free_msg_head, free_node, new_header));
 
+	msg_pool->_free_node_list[free_node]._next_free_idx = -1;
 	msg_hdr = (struct ipc_msg_header*)(msg_pool->_guard_msg_hdr + (1 << msg_pool->_msg_order) * free_node);
+
+	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
+	err_exit(msg_hdr->_msg_idx != free_node, "invalid free message.");
 
 	msg_hdr->_prod_service_type = from_service_type;
 	msg_hdr->_prod_service_index = from_service_index;
 	msg_hdr->_cons_service_type = local_port->_service_type;
 	msg_hdr->_cons_service_index = local_port->_service_idx;
 	msg_hdr->_msg_size = size;
-	msg_hdr->_msg_idx = free_node;
 
 	return (char*)(msg_hdr + 1);
 error_ret:
