@@ -17,6 +17,7 @@ struct ipc_channel_cfg
 };
 
 int ipc_channel_create(const struct ipc_channel_cfg* cfg);
+int ipc_channel_load(int cons_service_type, int cons_service_index);
 
 int ipc_open_cons_port(int service_type, int service_index);
 struct ipc_local_port* ipc_open_prod_port(int cons_service_type, int cons_service_index);

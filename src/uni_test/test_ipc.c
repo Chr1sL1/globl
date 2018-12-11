@@ -80,8 +80,15 @@ int test_ipc_channel(void)
 		.message_count[0 ... MSG_POOL_COUNT - 1] = 4,
 	};
 
-	rslt = ipc_channel_create(&cfg);
-	err_exit(rslt < 0, "create ipc channel failed.");
+	rslt = ipc_channel_load(cfg.cons_service_type, cfg.cons_service_index);
+	if(rslt < 0)
+	{
+		printf("ipc channel not exist.\n");
+
+		rslt = ipc_channel_create(&cfg);
+		err_exit(rslt < 0, "create ipc channel failed.");
+	}
+
 
 	rslt = ipc_open_cons_port(1, 1);
 	err_exit(rslt < 0, "open cons port failed.");
@@ -89,11 +96,16 @@ int test_ipc_channel(void)
 	prod_port = ipc_open_prod_port(1, 1);
 	err_exit(!prod_port, "open prod port failed.");
 
-	rslt = __send_msg(prod_port, 4);
-//	err_exit(rslt < 0, "send msg failed.");
+	while(1)
+	{
+		rslt = __send_msg(prod_port, 4);
+//		err_exit(rslt < 0, "send msg failed.");
 
-	rslt = __read_msg(4);
-//	err_exit(rslt < 0, "read msg failed.");
+		rslt = __read_msg(4);
+//		err_exit(rslt < 0, "read msg failed.");
+	}
+
+
 
 	return 0;
 error_ret:

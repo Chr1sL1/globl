@@ -209,6 +209,27 @@ error_ret:
 	return -1;
 }
 
+static int __msg_pool_load(int key, unsigned int pool_idx, int cons_service_type, int cons_service_index)
+{
+	unsigned int shm_size, msg_size;
+	struct shmm_blk* sb;
+	struct ipc_msg_pool* imp;
+	struct ipc_msg_header* msg_hdr;
+	char* p;
+
+	err_exit(pool_idx > MSG_POOL_COUNT, "invalid pool index.");
+
+	sb = shmm_open(key, 0);
+	err_exit(!sb, "load msg pool shm failed.");
+
+	imp = (struct ipc_msg_pool*)shmm_begin_addr(sb);
+	err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid msg pool.");
+
+	return 0;
+error_ret:
+	return -1;
+}
+
 static struct ipc_local_port* __open_local_port(int service_type, int service_index)
 {
 	struct ipc_local_port* ilp;
@@ -340,6 +361,34 @@ int ipc_channel_create(const struct ipc_channel_cfg* cfg)
 error_ret:
 	if(sb)
 		shmm_destroy(sb);
+	return -1;
+}
+
+int ipc_channel_load(int cons_service_type, int cons_service_index)
+{
+	int rslt;
+	struct shmm_blk* sb = 0;
+	struct ipc_channel* ic = 0;
+
+	int channel_key = create_ipc_channel_key(cons_service_type, cons_service_index);
+	err_exit(channel_key < 0, "create ipc channel key failed.");
+
+	sb = shmm_open(channel_key, 0);
+	err_exit(!sb, "open ipc channel failed.");
+
+	ic = (struct ipc_channel*)shmm_begin_addr(sb);
+	err_exit(ic->_magic_tag != IPC_CHANNEL_MAGIC, "invalid channel.");
+
+	for(int i = 0; i < MSG_POOL_COUNT; ++i)
+	{
+		rslt = __msg_pool_load(ic->_key_handle[i]._key, i, cons_service_type, cons_service_index);
+		err_exit(rslt < 0, "load ipc channel message pool[%d] failed.", i);
+	}
+
+	return 0;
+error_ret:
+	if(sb)
+		shmm_close(sb);
 	return -1;
 }
 
