@@ -29,6 +29,12 @@ static void __fill_msg(char* write_buf, int index)
 	strncpy(msg->msg, "hello, world.", sizeof(msg->msg));
 }
 
+static void __on_read_msg(const char* buf, unsigned int size, int prod_service_type, int prod_service_index)
+{
+	struct test_msg* msg = (struct test_msg*)buf;
+	printf("[%u]: %s\n", msg->index, msg->msg);
+}
+
 static int __send_msg(struct ipc_local_port* prod_port, int count)
 {
 	int rslt;
@@ -57,7 +63,7 @@ static int __read_msg(int count)
 
 	for(int i = 0; i < count; ++i)
 	{
-		rslt = ipc_read_sc(read_buf, &read_size, &prod_service_type, &prod_service_index);
+		rslt = ipc_read_sc();
 		err_exit(rslt < 0, "read msg failed: %d.", i);
 	}
 
@@ -90,7 +96,7 @@ int test_ipc_channel(void)
 	}
 
 
-	rslt = ipc_open_cons_port(1, 1);
+	rslt = ipc_open_cons_port(1, 1, __on_read_msg);
 	err_exit(rslt < 0, "open cons port failed.");
 
 	prod_port = ipc_open_prod_port(1, 1);

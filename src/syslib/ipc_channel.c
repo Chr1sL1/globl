@@ -82,6 +82,7 @@ struct ipc_local_port
 };
 
 static struct ipc_local_port* __the_cons_port = 0;
+static ipc_read_func_t __cons_read_func;
 
 static inline unsigned int __aligned_msg_size(unsigned int payload_size)
 {
@@ -142,7 +143,7 @@ error_ret:
 	return 0;
 }
 
-static inline struct ipc_msg_header* __read_msg(struct ipc_msg_queue_node* msg_node, char* buf, unsigned int* size)
+static inline struct ipc_msg_header* __read_msg(struct ipc_msg_queue_node* msg_node)
 {
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
@@ -155,13 +156,15 @@ static inline struct ipc_msg_header* __read_msg(struct ipc_msg_queue_node* msg_n
 	msg_hdr = __get_msg(msg_pool, msg_node->_msg_block_idx);
 	err_exit(msg_hdr == 0, "invalid msg_hdr.");
 
-	*size = msg_hdr->_msg_size;
-	memcpy(buf, (char*)(msg_hdr + 1), msg_hdr->_msg_size);
+	if(__cons_read_func)
+		(*__cons_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_prod_service_type, msg_hdr->_prod_service_index);
 
 	return msg_hdr;
 error_ret:
 	return 0;
 }
+
+
 
 static int __msg_pool_create(int key, unsigned int pool_idx, const struct ipc_channel_cfg* cfg)
 {
@@ -392,12 +395,14 @@ error_ret:
 	return -1;
 }
 
-int ipc_open_cons_port(int service_type, int service_index)
+int ipc_open_cons_port(int service_type, int service_index, ipc_read_func_t read_func)
 {
 	if(!__the_cons_port)
 		__the_cons_port = __open_local_port(service_type, service_index);
 
 	err_exit(__the_cons_port == 0, "open cons port failed.");
+
+	__cons_read_func = read_func;
 
 	return 0;
 error_ret:
@@ -439,7 +444,7 @@ int ipc_close_prod_port(struct ipc_local_port* local_port)
 	return __ipc_close_port(local_port);
 }
 
-int ipc_read_sc(char* buf, unsigned int* size, unsigned int* prod_service_type, unsigned int* prod_service_index)
+int ipc_read_sc(void)
 {
 	struct ipc_channel* channel;
 	struct ipc_msg_header* msg_hdr;
@@ -448,7 +453,6 @@ int ipc_read_sc(char* buf, unsigned int* size, unsigned int* prod_service_type, 
 	unsigned long cons_head, cons_next;
 
 	err_exit(!__the_cons_port, "ipc_read_sc: invalid local port.");
-	err_exit(!buf, "ipc_read_sc: invalid channel buf.");
 
 	channel = (struct ipc_channel*)shmm_begin_addr(__the_cons_port->_shm_channel);
 	err_exit(__check_valid_channel(channel) < 0, "ipc_read_sc: invalid ipc channel.");
@@ -465,11 +469,8 @@ int ipc_read_sc(char* buf, unsigned int* size, unsigned int* prod_service_type, 
 	channel->_cons_ptr_head = cons_next;
 	channel->_cons_ptr_tail = cons_next;
 
-	msg_hdr = __read_msg(msg_node, buf, size);
+	msg_hdr = __read_msg(msg_node);
 	err_exit(!msg_hdr, "ipc_read_sc: read msg failed");
-
-	*prod_service_type = msg_hdr->_prod_service_type;
-	*prod_service_index = msg_hdr->_prod_service_index;
 
 	__free_msg_sc(msg_pool, msg_hdr);
 
