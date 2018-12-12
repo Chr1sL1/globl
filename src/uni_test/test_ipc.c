@@ -1,5 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <unistd.h>
 
 #include "syslib/ipc_channel.h"
 #include "syslib/misc.h"
@@ -32,16 +35,17 @@ static void __fill_msg(char* write_buf, int index)
 static void __on_read_msg(const char* buf, unsigned int size, int prod_service_type, int prod_service_index)
 {
 	struct test_msg* msg = (struct test_msg*)buf;
-	printf("[%u]: %s\n", msg->index, msg->msg);
+
+	printf("[%u]: %s, {%d:%d}\n", msg->index, msg->msg, prod_service_type, prod_service_index);
 }
 
-static int __send_msg(struct ipc_local_port* prod_port, int count)
+static int __send_msg(struct ipc_local_port* prod_port, int count, int prod_service_type, int prod_service_index)
 {
 	int rslt;
 
 	for(int i = 0; i < count; ++i)
 	{
-		char* write_buf = ipc_alloc_write_buf_mp(prod_port, sizeof(struct test_msg), 2, 1);
+		char* write_buf = ipc_alloc_write_buf_mp(prod_port, sizeof(struct test_msg), prod_service_type, prod_service_index);
 		err_exit(!write_buf, "alloc write buf failed: %d.", i);
 
 		__fill_msg(write_buf, i);
@@ -104,17 +108,101 @@ int test_ipc_channel(void)
 
 	while(1)
 	{
-		rslt = __send_msg(prod_port, 4);
+		int msg_cnt = random() % 16 + 1;
+		rslt = __send_msg(prod_port, msg_cnt, 2, 1);
 //		err_exit(rslt < 0, "send msg failed.");
 
 		rslt = __read_msg(4);
 //		err_exit(rslt < 0, "read msg failed.");
 	}
 
-
-
 	return 0;
 error_ret:
 	return -1;
 }
+
+
+//////////////
+//
+
+static int __cons_running = 0;
+
+static void* __prod_thread(void* param)
+{
+	int rslt;
+	int index = (int)param;
+
+	struct ipc_local_port* prod_port;
+
+	while(!__cons_running)
+	{
+		usleep(1000);
+	}
+
+	prod_port = ipc_open_prod_port(1, 1);
+	err_exit(!prod_port, "open prod port failed: %d.", index);
+
+	while(1)
+	{
+		int msg_cnt = random() % 16 + 1;
+
+		rslt = __send_msg(prod_port, msg_cnt, 10, index);
+		if(rslt < 0)
+			printf("send msg failed.\n");
+
+		usleep(1000);
+//		err_exit(rslt < 0, "send msg failed: %d.", index);
+	}
+
+
+	ipc_close_prod_port(prod_port);
+
+	return 0;
+error_ret:
+	return (void*)-1;
+}
+
+int test_ipc_channel_multi_prod(int prod_cnt)
+{
+	int rslt;
+	pthread_t trds[prod_cnt];
+
+	struct ipc_channel_cfg cfg = 
+	{
+		.cons_service_type = 1,
+		.cons_service_index = 1,
+		.message_queue_len = 128,
+		.message_count[0 ... MSG_POOL_COUNT - 1] = 1024,
+	};
+
+	rslt = ipc_channel_load(cfg.cons_service_type, cfg.cons_service_index);
+	if(rslt < 0)
+	{
+		printf("ipc channel not exist.\n");
+
+		rslt = ipc_channel_create(&cfg);
+		err_exit(rslt < 0, "create ipc channel failed.");
+	}
+
+	rslt = ipc_open_cons_port(1, 1, __on_read_msg);
+	err_exit(rslt < 0, "open cons port failed.");
+
+	for(int i = 0; i < prod_cnt; ++i)
+	{
+		rslt = pthread_create(&trds[i], 0, __prod_thread, (void*)i);
+		err_exit(rslt < 0, "create thread failed: %d.", i);
+	}
+
+	__cons_running = 1;
+
+	while(1)
+	{
+		rslt = __read_msg(256);
+		usleep(1000);
+	}
+
+error_ret:
+	return -1;
+}
+
 

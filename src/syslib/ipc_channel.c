@@ -147,7 +147,8 @@ static inline struct ipc_msg_header* __read_msg(struct ipc_msg_queue_node* msg_n
 {
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
-	err_exit(msg_node->_msg_size_order >= MSG_POOL_COUNT, "invalid message size.");
+
+	err_exit(msg_node->_msg_size_order < MIN_MSG_SIZE_ORDER || msg_node->_msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid message size.");
 
 	msg_pool = __get_msg_pool(__the_cons_port, msg_node->_msg_size_order);
 	err_exit(msg_pool == 0, "invalid message pool.");
