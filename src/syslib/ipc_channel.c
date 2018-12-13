@@ -63,11 +63,10 @@ struct ipc_msg_pool
 {
 	unsigned int _magic_tag;
 	unsigned int _msg_order;
-	unsigned int _msg_cnt;
 	volatile unsigned int _free_msg_head;
 	volatile unsigned int _free_msg_tail;
-	unsigned int _reserved;
-	void* _guard_msg_hdr;
+	unsigned int _msg_cnt;
+	unsigned int _msg_hdr_offset;
 	struct ipc_msg_free_node _free_node_list[0];
 };
 
@@ -133,7 +132,7 @@ static inline struct ipc_msg_header* __get_msg(struct ipc_msg_pool* msg_pool, un
 {
 	struct ipc_msg_header* msg_hdr;
 
-	msg_hdr = (struct ipc_msg_header*)(msg_pool->_guard_msg_hdr + (1 << msg_pool->_msg_order) * msg_idx);
+	msg_hdr = (struct ipc_msg_header*)(((char*)msg_pool + msg_pool->_msg_hdr_offset) + (1 << msg_pool->_msg_order) * msg_idx);
 
 	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "invalid addr.");
 	err_exit(msg_hdr->_msg_idx != msg_idx, "invalid idx.");
@@ -192,7 +191,7 @@ static int __msg_pool_create(int key, unsigned int pool_idx, const struct ipc_ch
 	imp->_free_msg_tail = imp->_msg_cnt - 1;
 
 	p = (char*)imp + sizeof(struct ipc_msg_pool) + imp->_msg_cnt * sizeof(struct ipc_msg_free_node);
-	imp->_guard_msg_hdr = p;
+	imp->_msg_hdr_offset = (unsigned int)((unsigned long)p - (unsigned long)imp);
 
 	for(int i = 0; i < imp->_msg_cnt; ++i)
 	{
@@ -505,7 +504,7 @@ char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int siz
 	} while(!__cas32(&msg_pool->_free_msg_head, free_node, new_header));
 
 	msg_pool->_free_node_list[free_node]._next_free_idx = -1;
-	msg_hdr = (struct ipc_msg_header*)(msg_pool->_guard_msg_hdr + (1 << msg_pool->_msg_order) * free_node);
+	msg_hdr = (struct ipc_msg_header*)((char*)msg_pool + msg_pool->_msg_hdr_offset + (1 << msg_pool->_msg_order) * free_node);
 
 	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
 	err_exit(msg_hdr->_msg_idx != free_node, "invalid free message.");
