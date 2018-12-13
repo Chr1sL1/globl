@@ -566,4 +566,43 @@ error_ret:
 	return -1;
 }
 
+int ipc_channel_check_state(void)
+{
+	struct ipc_channel* channel;
+
+	err_exit(!__the_cons_port, "error cons port.");
+	err_exit(!__the_cons_port->_shm_channel, "error channel shm.");
+
+	channel = (struct ipc_channel*)shmm_begin_addr(__the_cons_port->_shm_channel);
+	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
+
+	printf("cons_ptr_head: %d\n", channel->_cons_ptr_head);
+	printf("cons_ptr_tail: %d\n", channel->_cons_ptr_tail);
+	printf("prod_ptr_head: %d\n", channel->_prod_ptr_head);
+	printf("prod_ptr_tail: %d\n", channel->_prod_ptr_tail);
+
+	for(int i = 0; i < MSG_POOL_COUNT; ++i) 
+	{
+		int free_node_count = 0;
+
+		struct ipc_msg_pool* imp = __get_msg_pool(__the_cons_port, MIN_MSG_SIZE_ORDER + i);
+		err_exit(!imp, "error message pool: %d", i);
+
+		err_exit(imp->_free_node_list[imp->_free_msg_tail]._next_free_idx >= 0, "msgpool [%d]: failed to check tail node.", i);
+
+		for(int j = imp->_free_msg_head; j >= 0; )
+		{
+			++free_node_count;
+			j = imp->_free_node_list[j]._next_free_idx;
+		}
+
+		printf("msgpool [%d] free node count: %d, total count: %d\n", i, free_node_count, imp->_msg_cnt);
+	}
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+
 

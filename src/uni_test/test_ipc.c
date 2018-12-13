@@ -169,7 +169,7 @@ static void* __prod_thread(void* param)
 		if(rslt < 0)
 			printf("send msg failed.\n");
 
-		usleep(1000);
+		usleep(100);
 		//		err_exit(rslt < 0, "send msg failed: %d.", index);
 	}
 
@@ -190,7 +190,7 @@ int test_ipc_channel_multi_prod(int prod_cnt)
 	{
 		.cons_service_type = 1,
 		.cons_service_index = 1,
-		.message_queue_len = 32,
+		.message_queue_len = 1024,
 		.message_count[0 ... MSG_POOL_COUNT - 1] = 128,
 	};
 
@@ -235,10 +235,12 @@ int test_ipc_channel_multi_prod(int prod_cnt)
 			break;
 
 		rslt = __read_msg(32);
-		usleep(1000);
+		usleep(100);
 	}
 
 	printf("sent: %d, recv: %d\n", __send_cnt, __recv_cnt);
+
+	return ipc_channel_check_state();
 
 error_ret:
 	return -1;

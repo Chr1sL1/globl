@@ -33,5 +33,7 @@ int ipc_read_sc(void);
 char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int size, int from_service_type, int from_service_index);
 int ipc_write_mp(struct ipc_local_port* local_port, const char* buf);
 
+int ipc_channel_check_state(void);
+
 #endif
 
