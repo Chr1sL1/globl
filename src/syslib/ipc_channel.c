@@ -83,6 +83,12 @@ struct ipc_local_port
 static struct ipc_local_port* __the_cons_port = 0;
 static ipc_read_func_t __cons_read_func;
 
+static unsigned long __rdtsc_read = 0;
+static unsigned long __read_count = 0;
+
+static unsigned long __rdtsc_write = 0;
+static unsigned long __write_count = 0;
+
 static inline unsigned int __aligned_msg_size(unsigned int payload_size)
 {
 	return (unsigned int)round_up(payload_size + sizeof(struct ipc_msg_header), 8);
@@ -115,10 +121,10 @@ static inline int __cas64(volatile unsigned long* dst, unsigned long expected, u
 	return result;
 }
 
-static inline struct ipc_msg_pool* __get_msg_pool(struct ipc_local_port* port, unsigned int msg_size_order)
+static inline struct ipc_msg_pool* __get_msg_pool(struct ipc_local_port* port, int msg_size_order)
 {
 	struct ipc_msg_pool* imp;
-	err_exit(msg_size_order >= MSG_POOL_COUNT, "");
+	err_exit(msg_size_order < MIN_MSG_SIZE_ORDER || msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid msg size order");
 
 	imp = (struct ipc_msg_pool*)shmm_begin_addr(port->_shm_msg_pool[msg_size_order - MIN_MSG_SIZE_ORDER]);
 	err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid size order [%d].", msg_size_order);
@@ -452,6 +458,8 @@ int ipc_read_sc(void)
 	struct ipc_msg_pool* msg_pool;
 	unsigned long cons_head, cons_next;
 
+	unsigned long rdtsc1 = rdtsc();
+
 	err_exit(!__the_cons_port, "ipc_read_sc: invalid local port.");
 
 	channel = (struct ipc_channel*)shmm_begin_addr(__the_cons_port->_shm_channel);
@@ -473,6 +481,10 @@ int ipc_read_sc(void)
 	err_exit(!msg_hdr, "ipc_read_sc: read msg failed");
 
 	__free_msg_sc(msg_pool, msg_hdr);
+
+	__rdtsc_read += (rdtsc() - rdtsc1);
+
+	++__read_count;
 
 	return 0;
 error_ret:
@@ -597,6 +609,9 @@ int ipc_channel_check_state(void)
 
 		printf("msgpool [%d] free node count: %d, total count: %d\n", i, free_node_count, imp->_msg_cnt);
 	}
+
+	if(__read_count > 0)
+		printf("avg read rdtsc: %lu\n", __rdtsc_read / __read_count);
 
 	return 0;
 error_ret:

@@ -45,7 +45,7 @@ static void __on_read_msg(const char* buf, unsigned int size, int prod_service_t
 {
 	struct test_msg* msg = (struct test_msg*)buf;
 
-	printf("[%u]: %s {%d:%d}\n", msg->index, msg->msg, prod_service_type, prod_service_index);
+//	printf("[%u]: %s {%d:%d}\n", msg->index, msg->msg, prod_service_type, prod_service_index);
 
 	++__recv_cnt;
 }
@@ -162,14 +162,14 @@ static void* __prod_thread(void* param)
 		struct timeval tv;
 		gettimeofday(&tv, 0);
 
-		if(tv.tv_sec - __start_time > 10)
+		if(tv.tv_sec - __start_time > 60)
 			break;
 
 		rslt = __send_msg(prod_port, msg_cnt, 10, index);
 		if(rslt < 0)
-			printf("send msg failed.\n");
+//			printf("send msg failed.\n");
 
-		usleep(100);
+		usleep(1);
 		//		err_exit(rslt < 0, "send msg failed: %d.", index);
 	}
 
@@ -231,11 +231,11 @@ int test_ipc_channel_multi_prod(int prod_cnt)
 		struct timeval tv;
 		gettimeofday(&tv, 0);
 
-		if(tv.tv_sec - __start_time > 13)
+		if(tv.tv_sec - __start_time > 63)
 			break;
 
 		rslt = __read_msg(32);
-		usleep(100);
+		usleep(1);
 	}
 
 	printf("sent: %d, recv: %d\n", __send_cnt, __recv_cnt);
