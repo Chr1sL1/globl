@@ -224,7 +224,7 @@ error_ret:
 	return -1;
 }
 
-static int __msg_pool_load(int key, unsigned int pool_idx, int cons_service_type, int cons_service_index)
+static int __msg_pool_load(int key)
 {
 	unsigned int shm_size, msg_size;
 	struct shmm_blk* sb;
@@ -232,13 +232,29 @@ static int __msg_pool_load(int key, unsigned int pool_idx, int cons_service_type
 	struct ipc_msg_header* msg_hdr;
 	char* p;
 
-	err_exit(pool_idx > MSG_POOL_COUNT, "invalid pool index.");
-
 	sb = shmm_open(key, 0);
 	err_exit(!sb, "load msg pool shm failed.");
 
 	imp = (struct ipc_msg_pool*)shmm_begin_addr(sb);
 	err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid msg pool.");
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+static int __msg_pool_destroy(int key)
+{
+	unsigned int shm_size, msg_size;
+	struct shmm_blk* sb;
+	struct ipc_msg_pool* imp;
+	struct ipc_msg_header* msg_hdr;
+	char* p;
+
+	sb = shmm_open(key, 0);
+	err_exit(!sb, "load msg pool shm failed.");
+
+	shmm_destroy(sb);
 
 	return 0;
 error_ret:
@@ -373,7 +389,7 @@ int ipc_channel_load(struct ipc_service_key* cons_service_key)
 
 	for(int i = 0; i < MSG_POOL_COUNT; ++i)
 	{
-		rslt = __msg_pool_load(ic->_key_handle[i]._key, i, cons_service_key->service_type, cons_service_key->service_index);
+		rslt = __msg_pool_load(ic->_key_handle[i]._key);
 		err_exit(rslt < 0, "load ipc channel message pool[%d] failed.", i);
 	}
 
@@ -386,9 +402,31 @@ error_ret:
 
 int ipc_channel_destroy(struct ipc_service_key* cons_service_key)
 {
+	int rslt;
+	struct shmm_blk* sb = 0;
+	struct ipc_channel* ic = 0;
+
+	int channel_key = create_ipc_channel_key(cons_service_key->service_type, cons_service_key->service_index);
+	err_exit(channel_key < 0, "create ipc channel key failed.");
+
+	sb = shmm_open(channel_key, 0);
+	err_exit(!sb, "open ipc channel failed.");
+
+	ic = (struct ipc_channel*)shmm_begin_addr(sb);
+	err_exit(ic->_magic_tag != IPC_CHANNEL_MAGIC, "invalid channel.");
+
+	for(int i = 0; i < MSG_POOL_COUNT; ++i)
+	{
+		rslt = __msg_pool_destroy(ic->_key_handle[i]._key);
+		err_exit(rslt < 0, "destroy ipc channel message pool[%d] failed.", i);
+	}
+
+	shmm_destroy(sb);
 
 	return 0;
 error_ret:
+	if(sb)
+		shmm_destroy(sb);
 	return -1;
 }
 

@@ -261,7 +261,11 @@ int test_ipc_channel_multi_prod(int prod_cnt)
 
 	printf("sent: %d, recv: %d\n", __send_cnt, __recv_cnt);
 
-	return ipc_channel_check_state_cons(cons_port);
+	ipc_channel_check_state_cons(cons_port);
+
+	ipc_close_cons_port(cons_port);
+
+	ipc_channel_destroy(&__cons_key);
 
 error_ret:
 	return -1;
