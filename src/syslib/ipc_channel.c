@@ -444,7 +444,8 @@ struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_ke
 
 	err_exit(channel->_cons_port, "cons port has already been opened.");
 
-	channel->_cons_port = icp;
+	rslt = __cas64((unsigned long*)(&channel->_cons_port), 0LL, (unsigned long)icp);
+	err_exit(!rslt, "cons port has already been opened.");
 
 	icp->_read_func = read_func;
 
