@@ -14,6 +14,13 @@
 		}\
 	} while(0);
 
+#define err_exit_silent(stmt)\
+	do {\
+		if(unlikely(stmt)){\
+		goto error_ret;\
+		}\
+	} while(0);
+
 #define cache_line_size	64
 #define __cache_aligned__	__attribute__((aligned(cache_line_size)))
 

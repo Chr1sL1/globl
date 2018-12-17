@@ -35,13 +35,14 @@ struct ipc_msg_queue_node
 struct ipc_msg_pool_key_handle
 {
 	int _key;
-//	unsigned int _next_idx;
 };
 
 struct ipc_channel
 {
 	unsigned int _magic_tag;
 	unsigned int _msg_queue_len;
+
+	struct ipc_cons_port* _cons_port;
 
 	volatile unsigned long _cons_ptr_head;
 	volatile unsigned long _cons_ptr_tail;
@@ -70,18 +71,25 @@ struct ipc_msg_pool
 	struct ipc_msg_free_node _free_node_list[0];
 };
 
-struct ipc_local_port
+struct ipc_channel_port
 {
-	unsigned short _service_type;
-	unsigned short _service_idx;
-	unsigned int _reserved;
+	struct ipc_service_key _cons_key;
 	struct shmm_blk* _shm_channel;
 	struct shmm_blk* _shm_msg_pool[MSG_POOL_COUNT];
 	struct ipc_msg_pool* _msg_pool[MSG_POOL_COUNT];
 };
 
-static struct ipc_local_port* __the_cons_port = 0;
-static ipc_read_func_t __cons_read_func;
+struct ipc_prod_port
+{
+	struct ipc_channel_port _local_port;
+	struct ipc_service_key _local_service_key;
+};
+
+struct ipc_cons_port
+{
+	struct ipc_channel_port _local_port;
+	ipc_read_func_t _read_func;
+};
 
 static unsigned long __rdtsc_read = 0;
 static unsigned long __read_count = 0;
@@ -121,7 +129,7 @@ static inline int __cas64(volatile unsigned long* dst, unsigned long expected, u
 	return result;
 }
 
-static inline struct ipc_msg_pool* __get_msg_pool(struct ipc_local_port* port, int msg_size_order)
+static inline struct ipc_msg_pool* __get_msg_pool(struct ipc_channel_port* port, int msg_size_order)
 {
 	struct ipc_msg_pool* imp;
 	err_exit(msg_size_order < MIN_MSG_SIZE_ORDER || msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid msg size order");
@@ -148,29 +156,27 @@ error_ret:
 	return 0;
 }
 
-static inline struct ipc_msg_header* __read_msg(struct ipc_msg_queue_node* msg_node)
+static inline struct ipc_msg_header* __read_msg(struct ipc_cons_port* cons_port, struct ipc_msg_queue_node* msg_node)
 {
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
 
 	err_exit(msg_node->_msg_size_order < MIN_MSG_SIZE_ORDER || msg_node->_msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid message size.");
 
-	msg_pool = __get_msg_pool(__the_cons_port, msg_node->_msg_size_order);
+	msg_pool = __get_msg_pool(&cons_port->_local_port, msg_node->_msg_size_order);
 	err_exit(msg_pool == 0, "invalid message pool.");
 	err_exit(msg_node->_msg_block_idx >= msg_pool->_msg_cnt, "invalid message index.");
 
 	msg_hdr = __get_msg(msg_pool, msg_node->_msg_block_idx);
 	err_exit(msg_hdr == 0, "invalid msg_hdr.");
 
-	if(__cons_read_func)
-		(*__cons_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_prod_service_type, msg_hdr->_prod_service_index);
+	if(cons_port->_read_func)
+		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_prod_service_type, msg_hdr->_prod_service_index);
 
 	return msg_hdr;
 error_ret:
 	return 0;
 }
-
-
 
 static int __msg_pool_create(int key, unsigned int pool_idx, const struct ipc_channel_cfg* cfg)
 {
@@ -239,55 +245,13 @@ error_ret:
 	return -1;
 }
 
-static struct ipc_local_port* __open_local_port(int service_type, int service_index)
-{
-	struct ipc_local_port* ilp;
-	struct ipc_channel* channel;
-
-	int channel_key = create_ipc_channel_key(service_type, service_index);
-	err_exit(channel_key < 0, "create ipc channel key failed.");
-
-	ilp = malloc(sizeof(struct ipc_local_port));
-	err_exit(!ilp, "malloc local port failed.");
-
-	ilp->_shm_channel = shmm_open(channel_key, 0);
-	err_exit(!ilp->_shm_channel, "open ipc channel failed.");
-
-	channel = (struct ipc_channel*)shmm_begin_addr(ilp->_shm_channel);
-	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
-
-	ilp->_service_type = service_type;
-	ilp->_service_idx = service_index;
-
-	for(int i = 0; i < MSG_POOL_COUNT; ++i)
-	{
-		struct ipc_msg_pool* imp;
-		struct shmm_blk* sb = shmm_open(channel->_key_handle[i]._key, 0);
-		err_exit(!sb, "open msg pool [%d] failed.", i);
-
-		imp = (struct ipc_msg_pool*)shmm_begin_addr(sb);
-		err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid msg pool [%d].", i);
-
-		ilp->_shm_msg_pool[i] = sb;
-		ilp->_msg_pool[i] = imp;
-	}
-
-	return ilp;
-error_ret:
-	if(ilp->_shm_channel)
-		shmm_close(ilp->_shm_channel);
-	if(ilp)
-		free(ilp);
-	return 0;
-}
-
 
 static inline int __check_read(struct ipc_channel* channel)
 {
 	unsigned long cons_head = channel->_cons_ptr_head;
 	unsigned long prod_tail = channel->_prod_ptr_tail;
 
-	err_exit(cons_head >= prod_tail, "message queue empty.");
+	err_exit_silent(cons_head >= prod_tail);
 
 	return 0;
 error_ret:
@@ -299,7 +263,7 @@ static inline int __check_write(struct ipc_channel* channel)
 	unsigned long prod_head = channel->_prod_ptr_head;
 	unsigned long cons_tail = channel->_cons_ptr_tail;
 
-	err_exit(prod_head < cons_tail, "message queue full.");
+	err_exit_silent(prod_head < cons_tail);
 
 	return 0;
 error_ret:
@@ -334,13 +298,29 @@ error_ret:
 	return -1;
 }
 
+static inline int __ipc_close_port(struct ipc_channel_port* local_port)
+{
+	err_exit_silent(!local_port);
+
+	for(int i = 0; i < MSG_POOL_COUNT; ++i)
+	{
+		struct shmm_blk* sb = local_port->_shm_msg_pool[i];
+		if(sb)
+			shmm_close(sb);
+	}
+
+	return 0;
+error_ret:
+	return -1;
+}
+
 int ipc_channel_create(const struct ipc_channel_cfg* cfg)
 {
 	int result;
 	struct shmm_blk* sb = 0;
 	struct ipc_channel* ic = 0;
 
-	int channel_key = create_ipc_channel_key(cfg->cons_service_type, cfg->cons_service_index);
+	int channel_key = create_ipc_channel_key(cfg->cons_service_key.service_type, cfg->cons_service_key.service_index);
 	err_exit(channel_key < 0, "create ipc channel key failed.");
 
 	sb = shmm_create(channel_key, sizeof(struct ipc_channel) + cfg->message_queue_len * sizeof(struct ipc_msg_queue_node), 0);
@@ -349,6 +329,7 @@ int ipc_channel_create(const struct ipc_channel_cfg* cfg)
 	ic = (struct ipc_channel*)shmm_begin_addr(sb);
 
 	ic->_magic_tag = IPC_CHANNEL_MAGIC;
+	ic->_cons_port = 0;
 
 	ic->_cons_ptr_head = 0;
 	ic->_cons_ptr_tail = 0;
@@ -358,7 +339,7 @@ int ipc_channel_create(const struct ipc_channel_cfg* cfg)
 
 	for(int i = 0; i < MSG_POOL_COUNT; ++i)
 	{
-		int key = create_msg_pool_key(cfg->cons_service_type, cfg->cons_service_index, i, 0);
+		int key = create_msg_pool_key(cfg->cons_service_key.service_type, cfg->cons_service_key.service_index, i, 0);
 
 		result = __msg_pool_create(key, i, cfg);
 		err_exit(result < 0, "create ipc channel message pool[%d] failed.", i);
@@ -373,13 +354,13 @@ error_ret:
 	return -1;
 }
 
-int ipc_channel_load(int cons_service_type, int cons_service_index)
+int ipc_channel_load(struct ipc_service_key* cons_service_key)
 {
 	int rslt;
 	struct shmm_blk* sb = 0;
 	struct ipc_channel* ic = 0;
 
-	int channel_key = create_ipc_channel_key(cons_service_type, cons_service_index);
+	int channel_key = create_ipc_channel_key(cons_service_key->service_type, cons_service_key->service_index);
 	err_exit(channel_key < 0, "create ipc channel key failed.");
 
 	sb = shmm_open(channel_key, 0);
@@ -388,9 +369,11 @@ int ipc_channel_load(int cons_service_type, int cons_service_index)
 	ic = (struct ipc_channel*)shmm_begin_addr(sb);
 	err_exit(ic->_magic_tag != IPC_CHANNEL_MAGIC, "invalid channel.");
 
+	ic->_cons_port = 0;
+
 	for(int i = 0; i < MSG_POOL_COUNT; ++i)
 	{
-		rslt = __msg_pool_load(ic->_key_handle[i]._key, i, cons_service_type, cons_service_index);
+		rslt = __msg_pool_load(ic->_key_handle[i]._key, i, cons_service_key->service_type, cons_service_key->service_index);
 		err_exit(rslt < 0, "load ipc channel message pool[%d] failed.", i);
 	}
 
@@ -401,56 +384,135 @@ error_ret:
 	return -1;
 }
 
-int ipc_open_cons_port(int service_type, int service_index, ipc_read_func_t read_func)
+int ipc_channel_destroy(struct ipc_service_key* cons_service_key)
 {
-	if(!__the_cons_port)
-		__the_cons_port = __open_local_port(service_type, service_index);
-
-	err_exit(__the_cons_port == 0, "open cons port failed.");
-
-	__cons_read_func = read_func;
 
 	return 0;
 error_ret:
 	return -1;
 }
 
-struct ipc_local_port* ipc_open_prod_port(int cons_service_type, int cons_service_index)
+static int __open_local_port(struct ipc_channel_port* ilp, struct ipc_service_key* cons_key, struct ipc_channel** ret_channel)
 {
-	return __open_local_port(cons_service_type, cons_service_index);
-}
+	struct ipc_channel* channel;
 
-static inline int __ipc_close_port(struct ipc_local_port* local_port)
-{
-	err_exit(!local_port, "");
+	int channel_key = create_ipc_channel_key(cons_key->service_type, cons_key->service_index);
+	err_exit(channel_key < 0, "create ipc channel key failed.");
+
+	ilp->_shm_channel = shmm_open(channel_key, 0);
+	err_exit(!ilp->_shm_channel, "open ipc channel failed.");
+
+	channel = (struct ipc_channel*)shmm_begin_addr(ilp->_shm_channel);
+	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
+
+	ilp->_cons_key = *cons_key;
 
 	for(int i = 0; i < MSG_POOL_COUNT; ++i)
 	{
-		struct shmm_blk* sb = local_port->_shm_msg_pool[i];
-		shmm_close(sb);
+		struct ipc_msg_pool* imp;
+		struct shmm_blk* sb = shmm_open(channel->_key_handle[i]._key, 0);
+		err_exit(!sb, "open msg pool [%d] failed.", i);
+
+		imp = (struct ipc_msg_pool*)shmm_begin_addr(sb);
+		err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid msg pool [%d].", i);
+
+		ilp->_shm_msg_pool[i] = sb;
+		ilp->_msg_pool[i] = imp;
 	}
 
-	free(local_port);
+	*ret_channel = channel;
 
-	if(local_port == __the_cons_port)
-		__the_cons_port = 0;
+	return 0;
+error_ret:
+	__ipc_close_port(ilp);
+	return -1;
+}
+
+struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_key, ipc_read_func_t read_func)
+{
+	int rslt;
+	struct ipc_cons_port* icp;
+	struct ipc_channel* channel;
+
+	err_exit_silent(!cons_service_key);
+
+	icp = malloc(sizeof(struct ipc_cons_port));
+	err_exit(!icp, "malloc port failed.");
+
+	rslt = __open_local_port(&icp->_local_port, cons_service_key, &channel);
+	err_exit(rslt < 0, "open local port failed.");
+
+	err_exit(channel->_cons_port, "cons port has already been opened.");
+
+	channel->_cons_port = icp;
+
+	icp->_read_func = read_func;
+
+	return icp;
+error_ret:
+	__ipc_close_port(&icp->_local_port);
+
+	if(icp)
+		free(icp);
+	return 0;
+}
+
+
+struct ipc_prod_port* ipc_open_prod_port(struct ipc_service_key* cons_service_key, struct ipc_service_key* prod_service_key)
+{
+	int rslt;
+	struct ipc_prod_port* ipp;
+	struct ipc_channel* channel;
+
+	err_exit_silent(!cons_service_key);
+
+	ipp = malloc(sizeof(struct ipc_prod_port));
+	err_exit(!ipp, "malloc port failed.");
+
+	rslt = __open_local_port(&ipp->_local_port, cons_service_key, &channel);
+	err_exit(rslt < 0, "open local port failed.");
+
+	ipp->_local_service_key = *prod_service_key;
+
+	return ipp;
+error_ret:
+	__ipc_close_port(&ipp->_local_port);
+
+	if(ipp)
+		free(ipp);
+	return 0;
+}
+
+int ipc_close_cons_port(struct ipc_cons_port* cons_port)
+{
+	int rslt;
+
+	struct ipc_channel* channel = (struct ipc_channel*)shmm_begin_addr(cons_port->_local_port._shm_channel);
+	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
+
+	rslt = __ipc_close_port(&cons_port->_local_port);
+	err_exit(rslt < 0, "close port failed.");
+
+	free(cons_port);
 
 	return 0;
 error_ret:
 	return -1;
 }
 
-int ipc_close_cons_port(void)
+int ipc_close_prod_port(struct ipc_prod_port* prod_port)
 {
-	return __ipc_close_port(__the_cons_port);
+	int rslt = __ipc_close_port(&prod_port->_local_port);
+	err_exit(rslt < 0, "close port failed.");
+
+	free(prod_port);
+
+	return 0;
+error_ret:
+	return -1;
 }
 
-int ipc_close_prod_port(struct ipc_local_port* local_port)
-{
-	return __ipc_close_port(local_port);
-}
-
-int ipc_read_sc(void)
+int ipc_read_sc(struct ipc_cons_port* cons_port)
 {
 	struct ipc_channel* channel;
 	struct ipc_msg_header* msg_hdr;
@@ -460,24 +522,24 @@ int ipc_read_sc(void)
 
 	unsigned long rdtsc1 = rdtsc();
 
-	err_exit(!__the_cons_port, "ipc_read_sc: invalid local port.");
+	err_exit(!cons_port, "ipc_read_sc: invalid local port.");
 
-	channel = (struct ipc_channel*)shmm_begin_addr(__the_cons_port->_shm_channel);
+	channel = (struct ipc_channel*)shmm_begin_addr(cons_port->_local_port._shm_channel);
 	err_exit(__check_valid_channel(channel) < 0, "ipc_read_sc: invalid ipc channel.");
-	err_exit(__check_read(channel) < 0, "ipc_read_sc: can not read.");
+	err_exit_silent(__check_read(channel) < 0);
 
 	cons_head = channel->_cons_ptr_head;
 	cons_next = cons_head + 1;
 
 	msg_node = &channel->_msg_queue_node[cons_head % channel->_msg_queue_len];
 
-	msg_pool = __get_msg_pool(__the_cons_port, msg_node->_msg_size_order);
+	msg_pool = __get_msg_pool(&cons_port->_local_port, msg_node->_msg_size_order);
 	err_exit(msg_pool == 0, "invalid msg_pool.");
 
 	channel->_cons_ptr_head = cons_next;
 	channel->_cons_ptr_tail = cons_next;
 
-	msg_hdr = __read_msg(msg_node);
+	msg_hdr = __read_msg(cons_port, msg_node);
 	err_exit(!msg_hdr, "ipc_read_sc: read msg failed");
 
 	__free_msg_sc(msg_pool, msg_hdr);
@@ -491,23 +553,23 @@ error_ret:
 	return -1;
 }
 
-char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int size, int from_service_type, int from_service_index)
+char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, unsigned int size)
 {
 	unsigned int pool_idx, free_node, new_header, tail_node;
 
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
 
-	err_exit(local_port == 0, "invalid local port.");
+	err_exit(prod_port == 0, "invalid prod port.");
 
-	msg_pool = __get_msg_pool(local_port, __aligned_msg_size_order(size));
+	msg_pool = __get_msg_pool(&prod_port->_local_port, __aligned_msg_size_order(size));
 	err_exit(msg_pool == 0, "invalid pool.");
 
 	do {
 		free_node = msg_pool->_free_msg_head;
 		tail_node = msg_pool->_free_msg_tail;
 
-		err_exit(free_node == tail_node, "invalid header node.");
+		err_exit_silent(free_node == tail_node);
 
 		new_header = msg_pool->_free_node_list[free_node]._next_free_idx;
 		err_exit(new_header < 0, "invalid header node.");
@@ -521,10 +583,10 @@ char* ipc_alloc_write_buf_mp(struct ipc_local_port* local_port, unsigned int siz
 	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
 	err_exit(msg_hdr->_msg_idx != free_node, "invalid free message.");
 
-	msg_hdr->_prod_service_type = from_service_type;
-	msg_hdr->_prod_service_index = from_service_index;
-	msg_hdr->_cons_service_type = local_port->_service_type;
-	msg_hdr->_cons_service_index = local_port->_service_idx;
+	msg_hdr->_prod_service_type = prod_port->_local_service_key.service_type;
+	msg_hdr->_prod_service_index = prod_port->_local_service_key.service_index;
+	msg_hdr->_cons_service_type = prod_port->_local_port._cons_key.service_type;
+	msg_hdr->_cons_service_index = prod_port->_local_port._cons_key.service_index;
 	msg_hdr->_msg_size = size;
 
 	return (char*)(msg_hdr + 1);
@@ -532,23 +594,22 @@ error_ret:
 	return 0;
 }
 
-int ipc_write_mp(struct ipc_local_port* local_port, const char* buf)
+int ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf)
 {
 	struct ipc_msg_header* msg_header;
 	struct ipc_channel* channel;
 	struct ipc_msg_queue_node* mqn;
 	unsigned long prod_head, prod_next, cons_tail;
 
-	err_exit(local_port == 0, "invalid port.");
-	err_exit(buf == 0, "invalid buf.");
+	err_exit(!prod_port, "invalid port.");
+	err_exit(!buf, "invalid buf.");
 
 	msg_header = (struct ipc_msg_header*)(buf - sizeof(struct ipc_msg_header));
 
 	err_exit(msg_header->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
 
-	channel = (struct ipc_channel*)shmm_begin_addr(local_port->_shm_channel);
+	channel = (struct ipc_channel*)shmm_begin_addr(prod_port->_local_port._shm_channel);
 	err_exit(__check_valid_channel(channel) < 0, "invalid ipc channel.");
-//	err_exit(__check_write(channel) < 0, "channel can not write.");
 
 	do {
 		prod_head = channel->_prod_ptr_head;
@@ -577,14 +638,14 @@ error_ret:
 	return -1;
 }
 
-int ipc_channel_check_state(void)
+static int __ipc_channel_check_state(struct ipc_channel_port* local_port)
 {
 	struct ipc_channel* channel;
 
-	err_exit(!__the_cons_port, "error cons port.");
-	err_exit(!__the_cons_port->_shm_channel, "error channel shm.");
+	err_exit(!local_port, "error local port");
+	err_exit(!local_port->_shm_channel, "error channel shm.");
 
-	channel = (struct ipc_channel*)shmm_begin_addr(__the_cons_port->_shm_channel);
+	channel = (struct ipc_channel*)shmm_begin_addr(local_port->_shm_channel);
 	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
 
 	printf("cons_ptr_head: %d\n", channel->_cons_ptr_head);
@@ -596,7 +657,7 @@ int ipc_channel_check_state(void)
 	{
 		int free_node_count = 0;
 
-		struct ipc_msg_pool* imp = __get_msg_pool(__the_cons_port, MIN_MSG_SIZE_ORDER + i);
+		struct ipc_msg_pool* imp = __get_msg_pool(local_port, MIN_MSG_SIZE_ORDER + i);
 		err_exit(!imp, "error message pool: %d", i);
 
 		err_exit(imp->_free_node_list[imp->_free_msg_tail]._next_free_idx >= 0, "msgpool [%d]: failed to check tail node.", i);
@@ -618,5 +679,14 @@ error_ret:
 	return -1;
 }
 
+int ipc_channel_check_state_cons(struct ipc_cons_port* cons_port)
+{
+	return __ipc_channel_check_state(&cons_port->_local_port);
+}
+
+int ipc_channel_check_state_prod(struct ipc_prod_port* prod_port)
+{
+	return __ipc_channel_check_state(&prod_port->_local_port);
+}
 
 
