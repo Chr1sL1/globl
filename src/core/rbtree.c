@@ -1,6 +1,6 @@
-#include "syslib/rbtree.h"
-#include "syslib/dlist.h"
-#include "syslib/common.h"
+#include "core/rbtree.h"
+#include "core/dlist.h"
+#include "core/common.h"
 
 #define is_black(node)	(!(node) || (node)->isblack)
 #define is_red(node)	((node) && !(node)->isblack)

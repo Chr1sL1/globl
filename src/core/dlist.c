@@ -1,4 +1,4 @@
-#include "syslib/dlist.h"
+#include "core/dlist.h"
 
 inline long lst_new(struct dlist* lst)
 {

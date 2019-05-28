@@ -1,6 +1,6 @@
-#include "syslib/objpool.h"
-#include "syslib/dlist.h"
-#include "syslib/misc.h"
+#include "core/objpool.h"
+#include "core/dlist.h"
+#include "core/misc.h"
 
 #include <stdlib.h>
 

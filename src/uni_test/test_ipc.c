@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "syslib/ipc_channel.h"
-#include "syslib/misc.h"
+#include "core/ipc_channel.h"
+#include "core/misc.h"
 
 #pragma pack(1)
 struct test_msg

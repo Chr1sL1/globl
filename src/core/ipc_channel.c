@@ -1,8 +1,8 @@
-#include "syslib/ipc_channel.h"
-#include "syslib/misc.h"
-#include "syslib/shmem.h"
-#include "syslib/shm_key.h"
-#include "syslib/slist.h"
+#include "core/ipc_channel.h"
+#include "core/misc.h"
+#include "core/shmem.h"
+#include "core/shm_key.h"
+#include "core/slist.h"
 
 #include <stdlib.h>
 #include <stdio.h>

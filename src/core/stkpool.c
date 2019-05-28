@@ -1,7 +1,7 @@
-#include "syslib/stkpool.h"
-#include "syslib/mmops.h"
-#include "syslib/misc.h"
-#include "syslib/dlist.h"
+#include "core/stkpool.h"
+#include "core/mmops.h"
+#include "core/misc.h"
+#include "core/dlist.h"
 
 #include <stdio.h>
 #include <unistd.h>

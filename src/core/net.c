@@ -1,9 +1,9 @@
-#include "syslib/net.h"
-#include "syslib/mmpool.h"
-#include "syslib/dlist.h"
-#include "syslib/rbtree.h"
-#include "syslib/misc.h"
-#include "syslib/objpool.h"
+#include "core/net.h"
+#include "core/mmpool.h"
+#include "core/dlist.h"
+#include "core/rbtree.h"
+#include "core/misc.h"
+#include "core/objpool.h"
 
 #ifdef __linux__
 #define _GNU_SOURCE

@@ -1,5 +1,5 @@
-#include "syslib/shmem.h"
-#include "syslib/misc.h"
+#include "core/shmem.h"
+#include "core/misc.h"
 
 #include <string.h>
 #include <stdlib.h>

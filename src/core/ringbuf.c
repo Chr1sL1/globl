@@ -1,6 +1,6 @@
-#include "syslib/ringbuf.h"
-#include "syslib/misc.h"
-#include "syslib/mmspace.h"
+#include "core/ringbuf.h"
+#include "core/misc.h"
+#include "core/mmspace.h"
 #include <string.h>
 
 #define RING_BUF_TAG		(0x1212dbdb1212dbdb)

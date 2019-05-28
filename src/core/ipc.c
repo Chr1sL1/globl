@@ -1,7 +1,7 @@
-#include "syslib/ipc.h"
-#include "syslib/shmem.h"
-#include "syslib/ringbuf.h"
-#include "syslib/mmspace.h"
+#include "core/ipc.h"
+#include "core/shmem.h"
+#include "core/ringbuf.h"
+#include "core/mmspace.h"
 
 #include <stdlib.h>
 

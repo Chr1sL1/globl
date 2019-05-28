@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include "syslib/slist.h"
-#include "syslib/misc.h"
+#include "core/slist.h"
+#include "core/misc.h"
 
 
 void sl_init(struct slist* the_list)

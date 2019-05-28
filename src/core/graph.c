@@ -1,8 +1,8 @@
 #include <stdio.h>
-#include "syslib/common.h"
-#include "syslib/dlist.h"
-#include "syslib/rbtree.h"
-#include "syslib/graph.h"
+#include "core/common.h"
+#include "core/dlist.h"
+#include "core/rbtree.h"
+#include "core/graph.h"
 
 int graph_new(struct graph* g)
 {

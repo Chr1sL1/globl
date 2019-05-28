@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-#include "syslib/co.h"
-#include "syslib/mmspace.h"
-#include "syslib/misc.h"
+#include "core/co.h"
+#include "core/mmspace.h"
+#include "core/misc.h"
 
 #define CO_MAGIC_NUM	(0x6677667788558855)
 #define CO_ZONE_NAME	"sys_co_zone"

@@ -1,2 +1,2 @@
-#include "syslib/radix.h"
-#include "syslib/mmspace.h"
+#include "core/radix.h"
+#include "core/mmspace.h"

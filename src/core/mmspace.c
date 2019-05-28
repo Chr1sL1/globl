@@ -1,11 +1,11 @@
-#include "syslib/mmspace.h"
-#include "syslib/shmem.h"
-#include "syslib/dlist.h"
-#include "syslib/rbtree.h"
-#include "syslib/misc.h"
-#include "syslib/mmops.h"
-#include "syslib/shm_key.h"
-#include "syslib/hash.h"
+#include "core/mmspace.h"
+#include "core/shmem.h"
+#include "core/dlist.h"
+#include "core/rbtree.h"
+#include "core/misc.h"
+#include "core/mmops.h"
+#include "core/shm_key.h"
+#include "core/hash.h"
 
 #include <string.h>
 #include <stdlib.h>

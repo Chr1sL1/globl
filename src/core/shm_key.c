@@ -1,5 +1,5 @@
-#include "syslib/shm_key.h"
-#include "syslib/misc.h"
+#include "core/shm_key.h"
+#include "core/misc.h"
 
 #include <stdlib.h>
 #include <stdio.h>
