@@ -3,6 +3,11 @@ function (add_project proj_name proj_type)
 
 	message(">>>>>>>>>> generating project ${proj_name}")
 
+	execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE arch)
+	message(STATUS "Archtecture: ${arch}")
+
+	string(COMPARE EQUAL ${arch} "x86_64" is_x86)
+
 	set(result_src_list "")
 
 	set(src_dir ${CMAKE_SOURCE_DIR}/../src/${proj_name})
@@ -10,13 +15,17 @@ function (add_project proj_name proj_type)
 	set(exe_dir ${CMAKE_SOURCE_DIR}/../bin)
 
 	file(GLOB_RECURSE proj_src_list RELATIVE ${src_dir} ${src_dir}/*.c ${src_dir}/*.s)
-	file(GLOB_RECURSE asm_src_list RELATIVE ${src_dir} ${src_dir}/*.s)
 
-	foreach(asm_file_name ${asm_src_list})
-		string(CONCAT asm_file_path ${src_dir}/ ${asm_file_name})
-		message(STATUS "${asm_file_path}")
-		set_property(SOURCE ${asm_file_path} PROPERTY LANGUAGE C)
-	endforeach()
+	if(${is_x86})
+		message(STATUS "Yay!! we can use x86 assembly.")
+		file(GLOB_RECURSE asm_src_list RELATIVE ${src_dir} ${src_dir}/*.s)
+
+		foreach(asm_file_name ${asm_src_list})
+			string(CONCAT asm_file_path ${src_dir}/ ${asm_file_name})
+			message(STATUS "${asm_file_path}")
+			set_property(SOURCE ${asm_file_path} PROPERTY LANGUAGE C)
+		endforeach()
+	endif()
 
 	foreach(file_name ${proj_src_list})
 		string(CONCAT file_path ${src_dir}/ ${file_name})
