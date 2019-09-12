@@ -1,7 +1,9 @@
+#include "common_types.h"
 #include "core/pgpool.h"
 #include "core/mmops.h"
 #include "core/dlist.h"
 #include "core/misc.h"
+#include "core/asm.h"
 #include "core/rbtree.h"
 #include <stdio.h>
 
@@ -27,30 +29,30 @@ struct _pg_node
 		unsigned using : 2;
 	};
 
-	long _pg_count;
+	i32 _pg_count;
 }__attribute__((aligned(8)));
 
 struct _free_list_head
 {
 	struct dlist _free_list;
-	long _op_count;
+	i32 _op_count;
 }__attribute__((aligned(8)));
 
 struct _pgp_cfg
 {
-	unsigned long maxpg_count;
-	unsigned long freelist_count;
-	unsigned long pg_size;
+	u64 maxpg_count;
+	u64 freelist_count;
+	u64 pg_size;
 }__attribute__((aligned(8)));
 
 struct _pgpool_impl
 {
-	unsigned long _chunck_label;
+	u64 _chunck_label;
 	struct pgpool _the_pool;
 	struct _pgp_cfg _cfg;
 
 	void* _chunk_addr;
-	long _chunk_pgcount;
+	i32 _chunk_pgcount;
 
 	struct rbtree _pgn_tree;
 	struct _free_list_head* _flh;
@@ -58,15 +60,15 @@ struct _pgpool_impl
 	struct dlist _free_pgn_list;
 	struct _pg_node* _pgn_pool;
 
-	unsigned long _alloc_count;
-	unsigned long _free_count;
+	u64 _alloc_count;
+	u64 _free_count;
 
 }__attribute__((aligned(8)));
 
 
 static inline struct _pgpool_impl* _conv_impl(struct pgpool* pgp)
 {
-	return (struct _pgpool_impl*)((void*)pgp - (unsigned long)(&((struct _pgpool_impl*)(0))->_the_pool));
+	return (struct _pgpool_impl*)((void*)pgp - (u64)(&((struct _pgpool_impl*)(0))->_the_pool));
 }
 
 
@@ -85,17 +87,17 @@ static void __pgp_destroy_agent(void* alloc)
 	pgp_destroy((struct pgpool*)alloc);
 }
 
-static void* __pgp_alloc_agent(void* alloc, unsigned long size)
+static void* __pgp_alloc_agent(void* alloc, u64 size)
 {
 	return pgp_alloc((struct pgpool*)alloc, size);
 }
 
-static long __pgp_free_agent(void* alloc, void* p)
+static i32 __pgp_free_agent(void* alloc, void* p)
 {
 	return pgp_free((struct pgpool*)alloc, p);
 }
 
-static void __pgp_counts(void* alloc, unsigned long* alloc_count, unsigned long* free_count)
+static void __pgp_counts(void* alloc, u64* alloc_count, u64* free_count)
 {
 	struct _pgpool_impl* pgpi = _conv_impl((struct pgpool*)alloc);
 	*alloc_count = pgpi->_alloc_count;
@@ -116,27 +118,27 @@ struct mm_ops __pgp_ops =
 
 static inline struct _pg_node* _conv_rbn(struct rbnode* rbn)
 {
-	return (struct _pg_node*)((void*)rbn - (unsigned long)(&((struct _pg_node*)(0))->_rb_node));
+	return (struct _pg_node*)((void*)rbn - (u64)(&((struct _pg_node*)(0))->_rb_node));
 }
 
 static inline struct _pg_node* _conv_fln(struct dlnode* fln)
 {
-	return (struct _pg_node*)((void*)fln - (unsigned long)(&((struct _pg_node*)(0))->_fln_node));
+	return (struct _pg_node*)((void*)fln - (u64)(&((struct _pg_node*)(0))->_fln_node));
 }
 
 static inline struct _pg_node* _conv_free_pgn(struct dlnode* fln)
 {
-	return (struct _pg_node*)((void*)fln - (unsigned long)(&((struct _pg_node*)(0))->_free_pgn_node));
+	return (struct _pg_node*)((void*)fln - (u64)(&((struct _pg_node*)(0))->_free_pgn_node));
 }
 
 static inline void _set_payload(struct _pg_node* node, void* payload)
 {
-	node->_payload_addr = (void*)((unsigned long)payload | node->using);
+	node->_payload_addr = (void*)((u64)payload | node->using);
 }
 
 static inline void* _get_payload(struct _pg_node* node)
 {
-	return (void*)(((unsigned long)(node->_payload_addr)) & (~3));
+	return (void*)(((u64)(node->_payload_addr)) & (~3));
 }
 
 static inline struct _pg_node* _fetch_free_pgn(struct _pgpool_impl* pgpi)
@@ -147,12 +149,12 @@ static inline struct _pg_node* _fetch_free_pgn(struct _pgpool_impl* pgpi)
 	return pgn;
 }
 
-static inline long _return_free_pgn(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
+static inline i32 _return_free_pgn(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
 {
 	return lst_push_front(&pgpi->_free_pgn_list, &pgn->_free_pgn_node);
 }
 
-static inline struct _pg_node* _fetch_fln(struct _pgpool_impl* pgpi, long flh_idx)
+static inline struct _pg_node* _fetch_fln(struct _pgpool_impl* pgpi, i32 flh_idx)
 {
 	struct _pg_node* pgn;
 	struct dlnode* fln = lst_pop_front(&pgpi->_flh[flh_idx]._free_list);
@@ -166,10 +168,10 @@ error_ret:
 	return 0;
 }
 
-static inline long _link_fln(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
+static inline i32 _link_fln(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
 {
-	long rslt;
-	long flh_idx = log_2(pgn->_pg_count);
+	i32 rslt;
+	i32 flh_idx = log_2(pgn->_pg_count);
 
 	lst_clr(&pgn->_fln_node);
 
@@ -183,10 +185,10 @@ error_ret:
 	return -1;
 }
 
-static inline long _unlink_fln(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
+static inline i32 _unlink_fln(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
 {
-	long rslt;
-	long flh_idx = log_2(pgn->_pg_count);
+	i32 rslt;
+	i32 flh_idx = log_2(pgn->_pg_count);
 	rslt = lst_remove(&pgpi->_flh[flh_idx]._free_list, &pgn->_fln_node);
 
 //	if(lst_check(&pgpi->_flh[flh_idx]._free_list) < 0)
@@ -197,7 +199,7 @@ error_ret:
 	return -1;
 }
 
-static inline long _link_rbn(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
+static inline i32 _link_rbn(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
 {
 	rb_fillnew(&pgn->_rb_node);
 	pgn->_rb_node.key = _get_payload(pgn);
@@ -223,11 +225,11 @@ error_ret:
 	return 0;
 }
 
-static long _take_free_node(struct _pgpool_impl* pgpi, long pg_count, struct _pg_node** pgn)
+static i32 _take_free_node(struct _pgpool_impl* pgpi, i32 pg_count, struct _pg_node** pgn)
 {
-	long rslt;
-	long flh_idx = log_2(pg_count);
-	long idx = flh_idx;
+	i32 rslt;
+	i32 flh_idx = log_2(pg_count);
+	i32 idx = flh_idx;
 
 	struct dlnode* dln;
 	struct _pg_node* candi_pgn = 0;
@@ -286,7 +288,7 @@ error_ret:
 	return -1;
 }
 
-static inline long _merge_free_node(struct _pgpool_impl* pgpi, struct _pg_node* prev, struct _pg_node* next)
+static inline i32 _merge_free_node(struct _pgpool_impl* pgpi, struct _pg_node* prev, struct _pg_node* next)
 {
 	if(_get_payload(next) != _get_payload(prev) + prev->_pg_count * pgpi->_cfg.pg_size)
 		goto error_ret;
@@ -303,10 +305,10 @@ error_ret:
 	return -1;
 }
 
-static long _return_free_node(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
+static i32 _return_free_node(struct _pgpool_impl* pgpi, struct _pg_node* pgn)
 {
-	long found = 0;
-	long rslt = 0;
+	i32 found = 0;
+	i32 rslt = 0;
 	struct rbnode* succ;
 	struct _pg_node* succ_pgn;
 
@@ -328,20 +330,20 @@ error_ret:
 	return -1;
 }
 
-static struct _pgpool_impl* _pgp_init_chunk(void* addr, unsigned long size, unsigned int maxpg_count, unsigned int pg_size)
+static struct _pgpool_impl* _pgp_init_chunk(void* addr, u64 size, u32 maxpg_count, u32 pg_size)
 {
 	struct _pgpool_impl* pgpi;
-	long remain_count, flh_idx, rslt;
+	i32 remain_count, flh_idx, rslt;
 	void* pg;
 	void* cur_offset = addr;
-	unsigned long chunk_pg_count;
+	u64 chunk_pg_count;
 
 	pgpi = (struct _pgpool_impl*)cur_offset;
 	cur_offset = move_ptr_align64(cur_offset, sizeof(struct _pgpool_impl));
 
 	pgpi->_chunck_label = PGP_CHUNK_LABEL;
 	pgpi->_the_pool.addr_begin = addr;
-	pgpi->_the_pool.addr_end = (void*)round_down((unsigned long)addr + size, pg_size);
+	pgpi->_the_pool.addr_end = (void*)round_down((u64)addr + size, pg_size);
 
 	lst_new(&pgpi->_free_pgn_list);
 	rb_init(&pgpi->_pgn_tree, 0);
@@ -353,7 +355,7 @@ static struct _pgpool_impl* _pgp_init_chunk(void* addr, unsigned long size, unsi
 	pgpi->_flh = (struct _free_list_head*)cur_offset;
 	cur_offset += sizeof(struct _free_list_head) * pgpi->_cfg.freelist_count;
 
-	for(long i = 0; i < pgpi->_cfg.freelist_count; ++i)
+	for(i32 i = 0; i < pgpi->_cfg.freelist_count; ++i)
 	{
 		lst_new(&pgpi->_flh[i]._free_list);
 	}
@@ -362,11 +364,11 @@ static struct _pgpool_impl* _pgp_init_chunk(void* addr, unsigned long size, unsi
 
 	pgpi->_pgn_pool = (struct _pg_node*)cur_offset;
 	cur_offset = move_ptr_align64(cur_offset, sizeof(struct _pg_node) * pgpi->_chunk_pgcount);
-	cur_offset = (void*)round_up((unsigned long)cur_offset, pg_size);
+	cur_offset = (void*)round_up((u64)cur_offset, pg_size);
 
 	pgpi->_chunk_addr = cur_offset;
 
-	for(long i = 0; i < pgpi->_chunk_pgcount; ++i)
+	for(i32 i = 0; i < pgpi->_chunk_pgcount; ++i)
 	{
 		lst_clr(&pgpi->_pgn_pool[i]._free_pgn_node);
 		lst_push_back(&pgpi->_free_pgn_list, &pgpi->_pgn_pool[i]._free_pgn_node);
@@ -422,10 +424,10 @@ error_ret:
 
 struct pgpool* pgp_create(void* addr, struct mm_config* cfg)
 {
-	long rslt = 0;
+	i32 rslt = 0;
 	struct _pgpool_impl* pgpi;
 
-	if(!addr || ((unsigned long)addr & 7) != 0 || cfg->total_size <= cfg->page_size) goto error_ret;
+	if(!addr || ((u64)addr & 7) != 0 || cfg->total_size <= cfg->page_size) goto error_ret;
 
 	if(!is_2power(cfg->page_size)) goto error_ret;
 
@@ -444,7 +446,7 @@ struct pgpool* pgp_load(void* addr)
 {
 	struct _pgpool_impl* pgpi;
 
-	if(!addr || ((unsigned long)addr & 7) != 0) goto error_ret;
+	if(!addr || ((u64)addr & 7) != 0) goto error_ret;
 
 	pgpi = _pgp_load_chunk(addr);
 	if(!pgpi) goto error_ret;
@@ -468,10 +470,10 @@ void pgp_destroy(struct pgpool* pgp)
 }
 
 
-void* pgp_alloc(struct pgpool* pgp, unsigned long size)
+void* pgp_alloc(struct pgpool* pgp, u64 size)
 {
 	void* payload;
-	long flh_idx, rslt, pg_count;
+	i32 flh_idx, rslt, pg_count;
 	struct _pg_node* pgn;
 	struct _pgpool_impl* pgpi = _conv_impl(pgp);
 
@@ -490,13 +492,13 @@ error_ret:
 	return 0;
 }
 
-long pgp_free(struct pgpool* pgp, void* payload)
+i32 pgp_free(struct pgpool* pgp, void* payload)
 {
-	long rslt;
+	i32 rslt;
 	struct _pg_node* pgn;
 	struct _pgpool_impl* pgpi = _conv_impl(pgp);
 
-	if(((unsigned long)payload & (pgpi->_cfg.pg_size - 1)) != 0)
+	if(((u64)payload & (pgpi->_cfg.pg_size - 1)) != 0)
 		goto error_ret;
 
 	pgn = _pgn_from_payload(pgpi, payload);
@@ -514,12 +516,12 @@ error_ret:
 	return -1;
 }
 
-long pgp_check(struct pgpool* pgp)
+i32 pgp_check(struct pgpool* pgp)
 {
-	long rslt = 0;
+	i32 rslt = 0;
 	struct _pgpool_impl* pgpi = _conv_impl(pgp);
 
-	for(long i = 0; i < pgpi->_cfg.freelist_count; ++i)
+	for(i32 i = 0; i < pgpi->_cfg.freelist_count; ++i)
 	{
 		rslt = lst_check(&pgpi->_flh[i]._free_list);
 		if(rslt < 0)

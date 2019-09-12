@@ -1,5 +1,5 @@
 #!/bin/sh
 
-touch inc/syslib/$1.h
-touch src/syslib/$1.c
+touch inc/core/$1.h
+touch src/core/$1.c
 

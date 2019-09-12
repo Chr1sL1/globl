@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -19,6 +20,7 @@
 #include "core/net.h"
 #include "core/timer.h"
 #include "core/co.h"
+#include "core/asm.h"
 
 #include "test.pb.h"
 #include "pb_encode.h"

@@ -1,5 +1,7 @@
+#include "common_types.h"
 #include "core/shmem.h"
 #include "core/misc.h"
+#include "core/asm.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -25,17 +27,17 @@
 
 //struct _shmm_blk_impl
 //{
-//	unsigned long _shmm_tag;
+//	u64 _shmm_tag;
 //	struct shmm_blk _the_blk;
 //	void* _raw_addr;
 //
-//	int _the_key;
-//	int _fd;
+//	i32 _the_key;
+//	i32 _fd;
 //};
 
 //static inline struct _shmm_blk_impl* _conv_blk(struct shmm_blk* blk)
 //{
-//	return (struct _shmm_blk_impl*)((unsigned long)blk - (unsigned long)&(((struct _shmm_blk_impl*)(0))->_the_blk));
+//	return (struct _shmm_blk_impl*)((u64)blk - (u64)&(((struct _shmm_blk_impl*)(0))->_the_blk));
 //}
 
 inline void* shmm_begin_addr(struct shmm_blk* shm)
@@ -66,10 +68,10 @@ error_ret:
 	return 0;
 }
 
-struct shmm_blk* shmm_create(int key, unsigned long size, int try_huge_page)
+struct shmm_blk* shmm_create(i32 key, u64 size, i32 try_huge_page)
 {
-	int flag;
-	int fd;
+	i32 flag;
+	i32 fd;
 	void* ret_addr = 0;
 	void* addr_begin;
 	struct shmm_blk* sbi;
@@ -77,7 +79,7 @@ struct shmm_blk* shmm_create(int key, unsigned long size, int try_huge_page)
 	if(key == IPC_PRIVATE || key <= 0 || size <= 0)
 		goto error_ret;
 
-//	if(((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
+//	if(((u64)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
 //		goto error_ret;
 
 __shmm_create_remap:	
@@ -148,7 +150,7 @@ error_ret:
 	return 0;
 }
 
-struct shmm_blk* shmm_open(int key, void* at_addr)
+struct shmm_blk* shmm_open(i32 key, void* at_addr)
 {
 //	at_addr = _conv_blk((struct shmm_blk*)at_addr);
 	return shmm_open_raw(key, at_addr);
@@ -156,17 +158,17 @@ error_ret:
 	return 0;
 }
 
-struct shmm_blk* shmm_open_raw(int key, void* at_addr)
+struct shmm_blk* shmm_open_raw(i32 key, void* at_addr)
 {
-	int flag = 0;
-	int fd;
+	i32 flag = 0;
+	i32 fd;
 	void* ret_addr = 0;
 	struct shmm_blk* sbi = 0;
 
 	if(key == IPC_PRIVATE || key <= 0)
 		goto error_ret;
 
-	if(at_addr && ((unsigned long)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
+	if(at_addr && ((u64)at_addr & (SHM_PAGE_SIZE - 1)) != 0)
 		goto error_ret;
 
 	if(!at_addr)
@@ -200,9 +202,9 @@ error_ret:
 
 }
 
-struct shmm_blk* shmm_reload(int key)
+struct shmm_blk* shmm_reload(i32 key)
 {
-	int rslt;
+	i32 rslt;
 	void* raw_addr;
 
 	struct shmm_blk* tmp_blk = shmm_open_raw(key, 0); 
@@ -223,7 +225,7 @@ error_ret:
 	return 0;
 }
 
-inline long shmm_close(struct shmm_blk* sbi)
+inline i32 shmm_close(struct shmm_blk* sbi)
 {
 	if(!sbi->_addr_begin_offset || !sbi->_addr_end_offset)
 		goto error_ret;
@@ -238,10 +240,10 @@ error_ret:
 	return -1;
 }
 
-inline long shmm_destroy(struct shmm_blk* sbi)
+inline i32 shmm_destroy(struct shmm_blk* sbi)
 {
-	int fd;
-	long rslt;
+	i32 fd;
+	i32 rslt;
 	void* ret_addr;
 
 	rslt = shmctl(sbi->_fd, IPC_RMID, 0);

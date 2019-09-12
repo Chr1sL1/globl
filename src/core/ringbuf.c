@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include "core/ringbuf.h"
 #include "core/misc.h"
 #include "core/mmspace.h"
@@ -10,18 +11,18 @@ struct _ring_buf_impl
 {
 	struct ring_buf _the_buf;
 
-	volatile long _r_offset;
-	volatile long _w_offset;
+	volatile i32 _r_offset;
+	volatile i32 _w_offset;
 };
 
 static struct mmcache* __the_ring_buf_zone = 0;
 
 static inline struct _ring_buf_impl* _conv_rb(struct ring_buf* rb)
 {
-	return (struct _ring_buf_impl*)((unsigned long)rb - (unsigned long)&(((struct _ring_buf_impl*)(0))->_the_buf));
+	return (struct _ring_buf_impl*)((u64)rb - (u64)&(((struct _ring_buf_impl*)(0))->_the_buf));
 }
 
-static inline long _rbuf_try_restore_zone(void)
+static inline i32 _rbuf_try_restore_zone(void)
 {
 	if(!__the_ring_buf_zone)
 	{
@@ -44,13 +45,13 @@ error_ret:
 
 }
 
-struct ring_buf* rbuf_create(void* addr, long size)
+struct ring_buf* rbuf_create(void* addr, i32 size)
 {
-	long rslt;
+	i32 rslt;
 	struct _ring_buf_impl* rbi;
 
 	if(!addr || size <= sizeof(struct _ring_buf_impl)) goto error_ret;
-	if(((unsigned long)addr & 0x7) != 0) goto error_ret;
+	if(((u64)addr & 0x7) != 0) goto error_ret;
 	if((size & 0x7) != 0) goto error_ret;
 
 	rslt = _rbuf_try_restore_zone();
@@ -70,7 +71,7 @@ error_ret:
 	return 0;
 }
 
-inline long rbuf_reset(struct ring_buf* rbuf)
+inline i32 rbuf_reset(struct ring_buf* rbuf)
 {
 	struct _ring_buf_impl* rbi;
 
@@ -85,7 +86,7 @@ error_ret:
 	return -1;
 }
 
-long rbuf_destroy(struct ring_buf* rbuf)
+i32 rbuf_destroy(struct ring_buf* rbuf)
 {
 	struct _ring_buf_impl* rbi;
 	if(!rbuf) goto error_ret;
@@ -97,10 +98,10 @@ error_ret:
 	return -1;
 }
 
-long rbuf_write_block(struct ring_buf* rbuf, const void* data, long datalen)
+i32 rbuf_write_block(struct ring_buf* rbuf, const void* data, i32 datalen)
 {
-	long r_offset, w_offset;
-	long remain;
+	i32 r_offset, w_offset;
+	i32 remain;
 	struct _ring_buf_impl* rbi;
 
 	if(!rbuf) goto error_ret;
@@ -131,7 +132,7 @@ long rbuf_write_block(struct ring_buf* rbuf, const void* data, long datalen)
 		}
 		else
 		{
-			long remain2 = datalen - remain;
+			i32 remain2 = datalen - remain;
 			memcpy(rbi->_the_buf.addr_begin + w_offset, data, remain);
 			memcpy(rbi->_the_buf.addr_begin, data + remain, remain2);
 			w_offset = remain2;
@@ -149,10 +150,10 @@ error_ret:
 	return -1;
 }
 
-long rbuf_read_block(struct ring_buf* rbuf, void* buf, long readlen)
+i32 rbuf_read_block(struct ring_buf* rbuf, void* buf, i32 readlen)
 {
-	long r_offset, w_offset;
-	long remain;
+	i32 r_offset, w_offset;
+	i32 remain;
 
 	struct _ring_buf_impl* rbi = _conv_rb(rbuf);
 	if(rbi == 0 || rbi->_the_buf.addr_begin == 0) goto error_ret;
@@ -180,7 +181,7 @@ long rbuf_read_block(struct ring_buf* rbuf, void* buf, long readlen)
 		}
 		else
 		{
-			long remain2 = readlen - remain;
+			i32 remain2 = readlen - remain;
 			memcpy(buf, rbi->_the_buf.addr_begin + r_offset, remain);
 			memcpy(buf + remain, rbi->_the_buf.addr_begin, remain2);
 			r_offset = remain2;

@@ -8,26 +8,26 @@
 
 struct shmm_blk
 {
-	unsigned long _shmm_tag;
-	unsigned long _addr_begin_offset;
-	unsigned long _addr_end_offset;
+	u64 _shmm_tag;
+	u64 _addr_begin_offset;
+	u64 _addr_end_offset;
 
 	void* _raw_addr;
-	int _the_key;
-	int _fd;
+	i32 _the_key;
+	i32 _fd;
 
 	struct rbnode rb_node;
 	struct dlnode lst_node;
 };
 
-struct shmm_blk* shmm_create(int key, unsigned long size, int try_huge_page);
-struct shmm_blk* shmm_open(int key, void* at_addr);
-struct shmm_blk* shmm_open_raw(int key, void* at_addr);
-struct shmm_blk* shmm_reload(int key);
+struct shmm_blk* shmm_create(i32 key, u64 size, i32 try_huge_page);
+struct shmm_blk* shmm_open(i32 key, void* at_addr);
+struct shmm_blk* shmm_open_raw(i32 key, void* at_addr);
+struct shmm_blk* shmm_reload(i32 key);
 
 
-long shmm_close(struct shmm_blk* shm);
-long shmm_destroy(struct shmm_blk* shm);
+i32 shmm_close(struct shmm_blk* shm);
+i32 shmm_destroy(struct shmm_blk* shm);
 
 void* shmm_begin_addr(struct shmm_blk* shm);
 void* shmm_end_addr(struct shmm_blk* shm);

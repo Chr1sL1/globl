@@ -11,18 +11,18 @@
 
 struct mmcache
 {
-	unsigned int obj_size;
-	unsigned int padding;
+	u32 obj_size;
+	u32 padding;
 };
 
 typedef void (*mmcache_obj_ctor)(void* obj_ptr);
 typedef void (*mmcache_obj_dtor)(void* obj_ptr);
 
-struct mmcache* mm_cache_create(const char* name, unsigned int obj_size, mmcache_obj_ctor ctor, mmcache_obj_dtor dtor);
-int mm_cache_destroy(struct mmcache* mmz);
+struct mmcache* mm_cache_create(const char* name, u32 obj_size, mmcache_obj_ctor ctor, mmcache_obj_dtor dtor);
+i32 mm_cache_destroy(struct mmcache* mmz);
 
 void* mm_cache_alloc(struct mmcache* mmz);
-long mm_cache_free(struct mmcache* mmz, void* p);
+i32 mm_cache_free(struct mmcache* mmz, void* p);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,29 +52,29 @@ enum MM_INIT_RESULT
 
 struct mm_space_config
 {
-	int app_type;
-	int app_idx;
-	int try_huge_page;
-	int max_shmm_count;
+	i32 app_type;
+	i32 app_idx;
+	i32 try_huge_page;
+	i32 max_shmm_count;
 
 	struct mm_config mm_cfg[MM_AREA_COUNT];
 };
 
-long mm_initialize(struct mm_space_config* cfg);
-long mm_reinitialize(struct mm_space_config* cfg);
-long mm_uninitialize(void);
+i32 mm_initialize(struct mm_space_config* cfg);
+i32 mm_reinitialize(struct mm_space_config* cfg);
+i32 mm_uninitialize(void);
 
 void mm_save_globl_data(void* p);
 void* mm_load_globl_data(void);
 
 struct mmcache* mm_search_zone(const char* zone_name);
 
-void* mm_alloc(unsigned long size);
-void* mm_area_alloc(unsigned long size, int area_type);
+void* mm_alloc(u64 size);
+void* mm_area_alloc(u64 size, i32 area_type);
 
 const struct mm_space_config* mm_get_cfg(void);
 
-long mm_free(void* p);
+i32 mm_free(void* p);
 
 #endif
 

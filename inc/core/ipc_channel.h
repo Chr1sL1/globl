@@ -9,39 +9,39 @@ struct ipc_channel;
 struct ipc_prod_port;
 struct ipc_cons_port;
 
-typedef void (*ipc_read_func_t)(const char* buf, unsigned int size, int prod_service_type, int prod_service_index);
+typedef void (*ipc_read_func_t)(const char* buf, u32 size, i32 prod_service_type, i32 prod_service_index);
 
 struct ipc_service_key
 {
-	unsigned int service_type;
-	unsigned int service_index;
+	u32 service_type;
+	u32 service_index;
 };
 
 struct ipc_channel_cfg
 {
 	struct ipc_service_key cons_service_key;
-	int message_queue_len;
-	int message_count[MSG_POOL_COUNT];
+	i32 message_queue_len;
+	i32 message_count[MSG_POOL_COUNT];
 };
 
 
-int ipc_channel_create(const struct ipc_channel_cfg* cfg);
-int ipc_channel_load(struct ipc_service_key* cons_service_key);
-int ipc_channel_destroy(struct ipc_service_key* cons_service_key);
+i32 ipc_channel_create(const struct ipc_channel_cfg* cfg);
+i32 ipc_channel_load(struct ipc_service_key* cons_service_key);
+i32 ipc_channel_destroy(struct ipc_service_key* cons_service_key);
 
 struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_key, ipc_read_func_t read_func);
 struct ipc_prod_port* ipc_open_prod_port(struct ipc_service_key* cons_service_key, struct ipc_service_key* prod_service_key);
 
-int ipc_close_cons_port(struct ipc_cons_port* cons_port);
-int ipc_close_prod_port(struct ipc_prod_port* prod_port);
+i32 ipc_close_cons_port(struct ipc_cons_port* cons_port);
+i32 ipc_close_prod_port(struct ipc_prod_port* prod_port);
 
-int ipc_read_sc(struct ipc_cons_port* cons_port);
+i32 ipc_read_sc(struct ipc_cons_port* cons_port);
 
-char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, unsigned int size);
-int ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf);
+char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, u32 size);
+i32 ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf);
 
-int ipc_channel_check_state_cons(struct ipc_cons_port* cons_port);
-int ipc_channel_check_state_prod(struct ipc_prod_port* prod_port);
+i32 ipc_channel_check_state_cons(struct ipc_cons_port* cons_port);
+i32 ipc_channel_check_state_prod(struct ipc_prod_port* prod_port);
 
 #endif
 

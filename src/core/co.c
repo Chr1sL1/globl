@@ -1,8 +1,10 @@
 #include <stdio.h>
 
+#include "common_types.h"
 #include "core/co.h"
 #include "core/mmspace.h"
 #include "core/misc.h"
+#include "core/asm.h"
 
 #define CO_MAGIC_NUM	(0x6677667788558855)
 #define CO_ZONE_NAME	"sys_co_zone"
@@ -11,31 +13,31 @@
 
 struct _reg_context
 {
-	unsigned long rax;
-	unsigned long rbx;
-	unsigned long rcx;
-	unsigned long rdx;
-	unsigned long rdi;
-	unsigned long rsi;
-	unsigned long rbp;
-	unsigned long rsp;
-	unsigned long r8;
-	unsigned long r9;
-	unsigned long r10;
-	unsigned long r11;
-	unsigned long r12;
-	unsigned long r13;
-	unsigned long r14;
-	unsigned long r15;
+	u64 rax;
+	u64 rbx;
+	u64 rcx;
+	u64 rdx;
+	u64 rdi;
+	u64 rsi;
+	u64 rbp;
+	u64 rsp;
+	u64 r8;
+	u64 r9;
+	u64 r10;
+	u64 r11;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
 } __attribute__((aligned(16)));
 
 struct co_task
 {
-	unsigned long _magic_num;		// 0x0
-	unsigned char _co_resume_flag;	// 0x08
-	unsigned char _co_jump_flag;	// 0x09
-	unsigned char _co_running;		// 0x0A
-	unsigned char _co_reserve[5];	// 0x0B ~ 0x0F
+	u64 _magic_num;		// 0x0
+	u8 _co_resume_flag;	// 0x08
+	u8 _co_jump_flag;	// 0x09
+	u8 _co_running;		// 0x0A
+	u8 _co_reserve[5];	// 0x0B ~ 0x0F
 
 	void* _co_stack_top;			// 0x10
 	co_func_t _co_func;				// 0x18
@@ -44,8 +46,8 @@ struct co_task
 	void* _co_final_ret_addr;		// 0x30
 	void* _co_stack_bottom;			// 0x38
 
-	unsigned long _rdtsc_yield;		// 0x40
-	unsigned long _rdtsc_resume;	// 0x48	
+	u64 _rdtsc_yield;		// 0x40
+	u64 _rdtsc_resume;	// 0x48	
 
 	/*****************************************/
 
@@ -76,9 +78,9 @@ struct co_task
  *
  * ***********************************************/
 
-extern int asm_co_run(struct co_task*, void*);
-extern int asm_co_yield(struct co_task*);
-extern int asm_co_resume(struct co_task*);
+extern i32 asm_co_run(struct co_task*, void*);
+extern i32 asm_co_yield(struct co_task*);
+extern i32 asm_co_resume(struct co_task*);
 
 static inline struct co_task* __conv_co(struct co_task* co)
 {
@@ -92,14 +94,14 @@ error_ret:
 
 static inline struct co_task* __conv_co_from_slnode(struct slnode* node)
 {
-	return (struct co_task*)((unsigned long)node - (unsigned long)&(((struct co_task*)(0))->_list_node));
+	return (struct co_task*)((u64)node - (u64)&(((struct co_task*)(0))->_list_node));
 }
 
 struct co_task* co_create(co_func_t func)
 {
-	int rslt;
+	i32 rslt;
 	void* co_stack;
-	int stack_size;
+	i32 stack_size;
 	struct co_task* co;
 
 	err_exit(!func, "co_create: invalid func.");
@@ -135,7 +137,7 @@ error_ret:
 	return;
 }
 
-int co_run(struct co_task* co, void* co_func_param)
+i32 co_run(struct co_task* co, void* co_func_param)
 {
 	printf("co_run: %p\n", co);
 	struct co_task* coi = __conv_co(co);
@@ -150,7 +152,7 @@ error_ret:
 	return -1;
 }
 
-int co_yield(struct co_task* co)
+i32 co_yield(struct co_task* co)
 {
 	struct co_task* coi = __conv_co(co);
 	err_exit(!coi, "co_yield: invalid param");
@@ -162,7 +164,7 @@ error_ret:
 	return -1;
 }
 
-int co_resume(struct co_task* co)
+i32 co_resume(struct co_task* co)
 {
 	struct co_task* coi = __conv_co(co);
 	err_exit(!coi, "co_resume: invalid param");
@@ -174,17 +176,17 @@ error_ret:
 }
 
 
-unsigned long co_profile_yield(struct co_task* co)
+u64 co_profile_yield(struct co_task* co)
 {
 	return co->_rdtsc_yield;
 }
 
-unsigned long co_profile_resume(struct co_task* co)
+u64 co_profile_resume(struct co_task* co)
 {
 	return co->_rdtsc_resume;
 }
 
-int init_co_holder(struct co_holder* ch)
+i32 init_co_holder(struct co_holder* ch)
 {
 	sl_init(&ch->_co_list);
 	return 0;
@@ -192,7 +194,7 @@ error_ret:
 	return -1;
 }
 
-int push_co(struct co_holder* ch, struct co_task* co)
+i32 push_co(struct co_holder* ch, struct co_task* co)
 {
 	struct co_task* coi = __conv_co(co);
 	err_exit(!coi, "co_yield: invalid param");
@@ -213,7 +215,7 @@ error_ret:
 	return 0;
 }
 
-int free_all_co(struct co_holder* ch)
+i32 free_all_co(struct co_holder* ch)
 {
 
 error_ret:

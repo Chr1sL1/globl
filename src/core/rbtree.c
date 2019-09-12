@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include "core/rbtree.h"
 #include "core/dlist.h"
 #include "core/common.h"
@@ -20,8 +21,8 @@ static inline void _cp_color(struct rbnode* to, struct rbnode* from)
 
 static inline void _swap_color(struct rbnode* x, struct rbnode* y)
 {
-	int isblackx = is_black(x);
-	int isblacky = is_black(y);
+	i32 isblackx = is_black(x);
+	i32 isblacky = is_black(y);
 
 	if(isblackx)
 		set_black(y);
@@ -34,16 +35,16 @@ static inline void _swap_color(struct rbnode* x, struct rbnode* y)
 		set_red(x);
 }
 
-static inline void _swap_value(unsigned long* v1, unsigned long* v2)
+static inline void _swap_value(u64* v1, u64* v2)
 {
-	unsigned long tmp = *v1;
+	u64 tmp = *v1;
 	*v1 = *v2;
 	*v2 = tmp;
 }
 
 static inline void _set_parent(struct rbnode* node, struct rbnode* p)
 {
-	long pval = (long)p;
+	u64 pval = (u64)p;
 	pval |= node->isblack;
 	node->p = (struct rbnode*)pval;
 }
@@ -51,14 +52,14 @@ static inline void _set_parent(struct rbnode* node, struct rbnode* p)
 static inline struct rbnode* _get_parent(struct rbnode* node)
 {
 	if(!node) goto error_ret;
-	long pval = (long)node->p;
+	u64 pval = (u64)node->p;
 	pval &= -4;
 	return (struct rbnode*)pval;
 error_ret:
 	return 0;
 }
 
-static inline long _def_order_func(void* key, struct rbnode* n)
+static inline i32 _def_order_func(void* key, struct rbnode* n)
 {
 	if(key < n->key) return -1;
 	else if(key > n->key) return 1;
@@ -66,7 +67,7 @@ static inline long _def_order_func(void* key, struct rbnode* n)
 	return 0;
 }
 
-static inline long _compare_key(struct rbtree* t, void* key , struct rbnode* n)
+static inline i32 _compare_key(struct rbtree* t, void* key , struct rbnode* n)
 {
 	if(!t->cfunc)
 		return _def_order_func(key, n);
@@ -289,12 +290,12 @@ error_ret:
 	return;
 }
 
-long rb_insert(struct rbtree* t, struct rbnode* node)
+i32 rb_insert(struct rbtree* t, struct rbnode* node)
 {
-	long comp_ret;
+	i32 comp_ret;
 	struct rbnode* hot;
 
-	if(!node || ((unsigned long)node & 0x3) != 0) goto error_ret;
+	if(!node || ((u64)node & 0x3) != 0) goto error_ret;
 	if(rb_search(t, node->key, &hot) != 0) goto error_ret;
 
 	node->isblack = 0;
@@ -329,7 +330,7 @@ error_ret:
 
 struct rbnode* rb_search(struct rbtree* t, void* key, struct rbnode** hot)
 {
-	long comp_ret = 1;
+	i32 comp_ret = 1;
 	struct rbnode* h;
 	struct rbnode* p = t->root;
 
@@ -414,10 +415,10 @@ static inline void _swap_node(struct rbnode* p, struct rbnode* q)
 
 	}
 
-	_swap_value((unsigned long*)&p->lchild, (unsigned long*)&q->lchild);
-	_swap_value((unsigned long*)&p->rchild, (unsigned long*)&q->rchild);
+	_swap_value((u64*)&p->lchild, (u64*)&q->lchild);
+	_swap_value((u64*)&p->rchild, (u64*)&q->rchild);
 
-	_swap_value((unsigned long*)&p->p, (unsigned long*)&q->p);
+	_swap_value((u64*)&p->p, (u64*)&q->p);
 //	_swap_color(p, q);
 
 error_ret:
@@ -624,7 +625,7 @@ void _fix_bb_new(struct rbtree* t, struct rbnode* x)
 void rb_remove_node(struct rbtree* t, struct rbnode* x)
 {
 	struct rbnode* r, *p, *rr;
-	int double_black = 0;
+	i32 double_black = 0;
 
 	if(x->lchild && x->rchild)
 	{
@@ -696,7 +697,7 @@ struct rbnode* rb_remove(struct rbtree* t, void* key)
 {
 	struct rbnode* r;
 	struct rbnode* x;
-	int isredr, isredx;
+	i32 isredr, isredx;
 
 	if(!t->root) goto error_ret;
 	if(t->size <= 0) return 0;

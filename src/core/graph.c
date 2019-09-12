@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include "common_types.h"
 #include "core/common.h"
 #include "core/dlist.h"
 #include "core/rbtree.h"
 #include "core/graph.h"
 
-int graph_new(struct graph* g)
+i32 graph_new(struct graph* g)
 {
 	if(!g) goto error_ret;
 
@@ -16,7 +17,7 @@ error_ret:
 	return 0;
 }
 
-int graph_add_node(struct graph* g, struct gnode* node, int key)
+i32 graph_add_node(struct graph* g, struct gnode* node, i32 key)
 {
 	if(!g || !node) goto error_ret;
 
@@ -34,7 +35,7 @@ error_ret:
 	return 0;
 }
 
-struct gnode* graph_del_node(struct graph* g, int node_key)
+struct gnode* graph_del_node(struct graph* g, i32 node_key)
 {
 	struct rbnode* rbn = NULL;
 	struct gnode* ret = NULL;
@@ -51,7 +52,7 @@ error_ret:
 	return NULL;
 }
 
-int graph_add_edge(struct graph* g, struct ngb_node* ngb1, struct ngb_node* ngb2)
+i32 graph_add_edge(struct graph* g, struct ngb_node* ngb1, struct ngb_node* ngb2)
 {
 	struct rbnode* rbn1 = NULL;
 	struct rbnode* rbn2 = NULL;
@@ -81,14 +82,14 @@ error_ret:
 	return 0;
 }
 
-int graph_bfs(struct graph* g, int node_from, _search_func f)
+i32 graph_bfs(struct graph* g, i32 node_from, _search_func f)
 {
 	return 1;
 error_ret:
 	return 0;
 }
 
-int graph_dfs(struct graph* g, int node_from, _search_func f)
+i32 graph_dfs(struct graph* g, i32 node_from, _search_func f)
 {
 	return 1;
 error_ret:

@@ -1,11 +1,13 @@
+#include "common_types.h"
 #include "core/mmspace.h"
 #include "core/shmem.h"
 #include "core/dlist.h"
 #include "core/rbtree.h"
 #include "core/misc.h"
+#include "core/asm.h"
 #include "core/mmops.h"
 #include "core/shm_key.h"
-#include "core/hash.h"
+#include "core/hash_old.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -22,8 +24,8 @@
 
 struct _mm_section_impl
 {
-	int _area_type;
-	int _padding;
+	i32 _area_type;
+	i32 _padding;
 
 	void* _allocator;
 };
@@ -37,18 +39,18 @@ struct _mm_area_impl
 struct _mm_shmm_save
 {
 	void* _base_addr;
-	int _key;
-	int _size;
+	i32 _key;
+	i32 _size;
 
 };
 
 struct _mm_space_impl
 {
-	unsigned long _mm_label;
-	int _next_shmm_key;
-	int _total_shmm_count;
-	int app_type;
-	int app_idx;
+	u64 _mm_label;
+	i32 _next_shmm_key;
+	i32 _total_shmm_count;
+	i32 app_type;
+	i32 app_idx;
 
 	struct shmm_blk* _this_shm;
 	struct mm_space_config _cfg;
@@ -65,8 +67,8 @@ struct _mm_space_impl
 struct _mmcache_impl
 {
 	struct mmcache _the_zone;
-	unsigned int _cache_size;
-	unsigned int _obj_aligned_size;
+	u32 _cache_size;
+	u32 _obj_aligned_size;
 
 	mmcache_obj_ctor _obj_ctor;
 	mmcache_obj_dtor _obj_dtor;
@@ -104,11 +106,11 @@ struct _mm_cache
 	struct _mmcache_impl* _cache;
 	struct dlnode _list_node;
 
-	unsigned int _slab_label;
-	unsigned short _free_count;
-	unsigned short _obj_count;
+	u32 _slab_label;
+	u16 _free_count;
+	u16 _obj_count;
 
-	unsigned long _alloc_bits;
+	u64 _alloc_bits;
 
 	void* _obj_ptr;
 
@@ -117,29 +119,29 @@ struct _mm_cache
 
 static inline struct _mmcache_impl* _conv_zone_impl(struct mmcache* mmz)
 {
-	return (struct _mmcache_impl*)((unsigned long)mmz - (unsigned long)&((struct _mmcache_impl*)(0))->_the_zone);
+	return (struct _mmcache_impl*)((u64)mmz - (u64)&((struct _mmcache_impl*)(0))->_the_zone);
 }
 
 static inline struct _mmcache_impl* _conv_zone_lst_node(struct dlnode* dln)
 {
-	return (struct _mmcache_impl*)((unsigned long)dln- (unsigned long)&((struct _mmcache_impl*)(0))->_list_node);
+	return (struct _mmcache_impl*)((u64)dln- (u64)&((struct _mmcache_impl*)(0))->_list_node);
 }
 
 static inline struct _mmcache_impl* _conv_zone_hash_node(struct hash_node* hn)
 {
-	return (struct _mmcache_impl*)((unsigned long)hn- (unsigned long)&((struct _mmcache_impl*)(0))->_hash_node);
+	return (struct _mmcache_impl*)((u64)hn- (u64)&((struct _mmcache_impl*)(0))->_hash_node);
 }
 
 static inline struct _mm_cache* _conv_cache(struct dlnode* dln)
 {
-	return (struct _mm_cache*)((unsigned long)dln- (unsigned long)&((struct _mm_cache*)(0))->_list_node);
+	return (struct _mm_cache*)((u64)dln- (u64)&((struct _mm_cache*)(0))->_list_node);
 }
 
 static struct _mm_cache* _cache_of_obj(void* obj)
 {
-	void* p = (void*)round_down((unsigned long)obj, __the_mmspace->_cfg.mm_cfg[MM_AREA_CACHE].page_size);
+	void* p = (void*)round_down((u64)obj, __the_mmspace->_cfg.mm_cfg[MM_AREA_CACHE].page_size);
 
-	for(unsigned int i = 0; i < __the_mmspace->_cfg.mm_cfg[MM_AREA_CACHE].maxpg_count; ++i)
+	for(u32 i = 0; i < __the_mmspace->_cfg.mm_cfg[MM_AREA_CACHE].maxpg_count; ++i)
 	{
 		struct _mm_cache* mmc = (struct _mm_cache*)(p - i * __the_mmspace->_cfg.mm_cfg[MM_AREA_CACHE].page_size);
 		if(mmc->_slab_label == SLAB_LABEL)
@@ -149,19 +151,19 @@ static struct _mm_cache* _cache_of_obj(void* obj)
 	return 0;
 }
 
-static inline long _mm_zcache_full(struct _mm_cache* mc)
+static inline i32 _mm_zcache_full(struct _mm_cache* mc)
 {
 	return mc->_free_count <= 0;
 }
 
-static inline long _mm_zcache_empty(struct _mm_cache* mc)
+static inline i32 _mm_zcache_empty(struct _mm_cache* mc)
 {
 	return mc->_free_count >= mc->_obj_count;
 }
 
-static inline int _mmc_next_free_obj(struct _mm_cache* mc)
+static inline i32 _mmc_next_free_obj(struct _mm_cache* mc)
 {
-	int idx = (int)bsf(~(mc->_alloc_bits));
+	i32 idx = (i32)bsf(~(mc->_alloc_bits));
 
 	if(idx >= mc->_obj_count) goto error_ret;
 
@@ -170,11 +172,11 @@ error_ret:
 	return -1;
 }
 
-static long _check_alloc_bits(struct _mm_cache* mc)
+static i32 _check_alloc_bits(struct _mm_cache* mc)
 {
-	int count = 0;
+	i32 count = 0;
 
-	for(int i = 0; i < 64; ++i)
+	for(i32 i = 0; i < 64; ++i)
 	{
 		if((mc->_alloc_bits & (1UL << i)) != 0)
 			++count;
@@ -190,7 +192,7 @@ error_ret:
 static inline void* _mm_zfetch_obj(struct _mm_cache* mc)
 {
 	void* p;
-	int idx = _mmc_next_free_obj(mc);
+	i32 idx = _mmc_next_free_obj(mc);
 
 	if(idx < 0) goto error_ret;
 
@@ -208,9 +210,9 @@ error_ret:
 	return 0;
 }
 
-static inline long _mm_zreturn_obj(struct _mm_cache* mc, void* p)
+static inline i32 _mm_zreturn_obj(struct _mm_cache* mc, void* p)
 {
-	long idx;
+	i32 idx;
 
 	err_exit(p < mc->_obj_ptr, "invalid p.");
 
@@ -235,9 +237,9 @@ error_ret:
 }
 
 
-static inline long _mm_zmove_cache(struct _mm_cache* mc, struct dlist* from_list, struct dlist* to_list)
+static inline i32 _mm_zmove_cache(struct _mm_cache* mc, struct dlist* from_list, struct dlist* to_list)
 {
-	long rslt;
+	i32 rslt;
 
 	if(from_list)
 	{
@@ -286,7 +288,7 @@ static void _mm_ztry_recall(void)
 
 static inline void* _mm_zalloc_pg(struct _mmcache_impl* mzi)
 {
-	unsigned long alloc_size = mzi->_the_zone.obj_size * CACHE_OBJ_COUNT + sizeof(struct _mm_cache); 
+	u64 alloc_size = mzi->_the_zone.obj_size * CACHE_OBJ_COUNT + sizeof(struct _mm_cache); 
 	void* pg = mm_area_alloc(alloc_size, MM_AREA_CACHE);
 	if(!pg)
 	{
@@ -326,10 +328,10 @@ error_ret:
 }
 
 
-struct mmcache* mm_cache_create(const char* name, unsigned int obj_size, mmcache_obj_ctor ctor, mmcache_obj_dtor dtor)
+struct mmcache* mm_cache_create(const char* name, u32 obj_size, mmcache_obj_ctor ctor, mmcache_obj_dtor dtor)
 {
-	long rslt;
-	unsigned long cache_size;
+	i32 rslt;
+	u64 cache_size;
 	struct _mmcache_impl* mzi;
 	struct hash_node* hn;
 	if(!__the_mmspace) goto error_ret;
@@ -373,7 +375,7 @@ error_ret:
 	return 0;
 }
 
-int mm_cache_destroy(struct mmcache* mmz)
+i32 mm_cache_destroy(struct mmcache* mmz)
 {
 error_ret:
 	return -1;
@@ -419,10 +421,10 @@ error_ret:
 	return 0;
 }
 
-long mm_cache_free(struct mmcache* mmz, void* p)
+i32 mm_cache_free(struct mmcache* mmz, void* p)
 {
-	long rslt;
-	long from_full;
+	i32 rslt;
+	i32 from_full;
 	struct _mm_cache* mc;
 	struct _mmcache_impl* mzi = _conv_zone_impl(mmz);
 
@@ -457,12 +459,12 @@ error_ret:
 
 static inline struct shmm_blk* _conv_shmm_from_rbn(struct rbnode* rbn)
 {
-	return (struct shmm_blk*)((unsigned long)rbn - (unsigned long)&((struct shmm_blk*)(0))->rb_node);
+	return (struct shmm_blk*)((u64)rbn - (u64)&((struct shmm_blk*)(0))->rb_node);
 }
 
 static inline struct shmm_blk* _conv_shmm_from_dln(struct dlnode* dln)
 {
-	return (struct shmm_blk*)((unsigned long)dln - (unsigned long)&((struct shmm_blk*)(0))->lst_node);
+	return (struct shmm_blk*)((u64)dln - (u64)&((struct shmm_blk*)(0))->lst_node);
 }
 
 static inline struct _mm_section_impl* _get_section(struct shmm_blk* shm)
@@ -470,7 +472,7 @@ static inline struct _mm_section_impl* _get_section(struct shmm_blk* shm)
 	return (struct _mm_section_impl*)shmm_begin_addr(shm);
 }
 
-static long _shmm_comp_func(void* key, struct rbnode* rbn)
+static i32 _shmm_comp_func(void* key, struct rbnode* rbn)
 {
 	struct shmm_blk* shm = _conv_shmm_from_rbn(rbn);
 	void* addr_begin = shmm_begin_addr(shm);
@@ -482,19 +484,19 @@ static long _shmm_comp_func(void* key, struct rbnode* rbn)
 	return 0;
 }
 
-static long _mm_load_area(struct _mm_space_impl* mm)
+static i32 _mm_load_area(struct _mm_space_impl* mm)
 {
-	long rslt;
+	i32 rslt;
 	struct dlnode* dln;
 
-	for(int i = 0; i < mm->_total_shmm_count; ++i)
+	for(i32 i = 0; i < mm->_total_shmm_count; ++i)
 	{
 		printf("load section shmm_key: 0x%x\n", mm->_shmm_save_list[i]._key);
 		struct shmm_blk* shm = shmm_open(mm->_shmm_save_list[i]._key, mm->_shmm_save_list[i]._base_addr);
 		if(!shm) goto error_ret;
 	}
 
-	for(int i = MM_AREA_BEGIN; i < MM_AREA_COUNT; ++i)
+	for(i32 i = MM_AREA_BEGIN; i < MM_AREA_COUNT; ++i)
 	{
 		dln = mm->_area_list[i]._section_list.head.next;
 
@@ -516,10 +518,10 @@ error_ret:
 	return -1;
 }
 
-static long _mm_create_section(struct _mm_space_impl* mm, int ar_type)
+static i32 _mm_create_section(struct _mm_space_impl* mm, i32 ar_type)
 {
-	long rslt;
-	int shm_key;
+	i32 rslt;
+	i32 shm_key;
 	struct _mm_area_impl* ar;
 	struct _mm_section_impl* sec = 0;
 	struct shmm_blk* shm = 0;
@@ -577,11 +579,11 @@ error_ret:
 
 }
 
-long mm_initialize(struct mm_space_config* cfg)
+i32 mm_initialize(struct mm_space_config* cfg)
 {
-	long rslt;
-	int shm_key;
-	unsigned long shm_size;
+	i32 rslt;
+	i32 shm_key;
+	u64 shm_size;
 	struct shmm_blk* shm;
 	struct _mm_space_impl* mm;
 	void* addr_begin;
@@ -634,7 +636,7 @@ long mm_initialize(struct mm_space_config* cfg)
 	mm->_zone_hash.hash_list = (struct dlist*)((void*)mm + sizeof(struct _mm_space_impl));
 	mm->_zone_hash.bucket_size = ZONE_HASH_SIZE;
 
-	for(int i = 0; i < ZONE_HASH_SIZE; ++i)
+	for(i32 i = 0; i < ZONE_HASH_SIZE; ++i)
 	{
 		lst_new(&mm->_zone_hash.hash_list[i]);
 	}
@@ -642,7 +644,7 @@ long mm_initialize(struct mm_space_config* cfg)
 
 	mm->_shmm_save_list = (struct _mm_shmm_save*)(&mm->_zone_hash.hash_list[ZONE_HASH_SIZE]);
 
-	for(int i = MM_AREA_BEGIN; i < MM_AREA_COUNT; ++i)
+	for(i32 i = MM_AREA_BEGIN; i < MM_AREA_COUNT; ++i)
 	{
 		rslt = _mm_create_section(mm, i);
 		if(rslt < 0) goto error_ret;
@@ -658,9 +660,9 @@ error_ret:
 	return MM_RESULT_FAILED;
 }
 
-long mm_reinitialize(struct mm_space_config* cfg)
+i32 mm_reinitialize(struct mm_space_config* cfg)
 {
-	long rslt = mm_initialize(cfg);
+	i32 rslt = mm_initialize(cfg);
 	if(rslt < 0) goto error_ret;
 
 	mm_uninitialize();
@@ -670,11 +672,11 @@ error_ret:
 	return -1;
 }
 
-long mm_uninitialize(void)
+i32 mm_uninitialize(void)
 {
 	if(!__the_mmspace) goto error_ret;
 
-	for(int i = 0; i < __the_mmspace->_total_shmm_count; ++i)
+	for(i32 i = 0; i < __the_mmspace->_total_shmm_count; ++i)
 	{
 		struct shmm_blk* shm = (struct shmm_blk*)__the_mmspace->_shmm_save_list[i]._base_addr;
 		if(!shm) continue;
@@ -725,14 +727,14 @@ error_ret:
 }
 
 
-void* mm_area_alloc(unsigned long size, int ar_type)
+void* mm_area_alloc(u64 size, i32 ar_type)
 {
-	long rslt;
+	i32 rslt;
 	void* p;
 	struct dlnode* dln;
 	struct shmm_blk* shm;
 	struct _mm_area_impl* ar;
-	unsigned long alloc_count, free_count;
+	u64 alloc_count, free_count;
 
 	err_exit(ar_type < MM_AREA_BEGIN || ar_type >= MM_AREA_COUNT, "mm_area_alloc ar_type error.");
 
@@ -777,10 +779,10 @@ error_ret:
 
 }
 
-void* mm_alloc(unsigned long size)
+void* mm_alloc(u64 size)
 {
-	unsigned long odr;
-	int ar_type;
+	u64 odr;
+	i32 ar_type;
 
 	err_exit(size == 0, "mm_alloc size 0");
 	if(!__the_mmspace) goto error_ret;
@@ -798,9 +800,9 @@ error_ret:
 	return 0;
 }
 
-long mm_free(void* p)
+i32 mm_free(void* p)
 {
-	long rslt;
+	i32 rslt;
 	struct rbnode* rbn, *hot;
 	struct _mm_section_impl* sec;
 	struct shmm_blk* shm;

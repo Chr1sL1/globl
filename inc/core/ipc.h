@@ -3,18 +3,18 @@
 
 struct ipc_peer
 {
-	long channel_id;
-	unsigned long buffer_size;
+	i32 channel_id;
+	u64 buffer_size;
 };
 
-struct ipc_peer* ipc_create(int channel_id, unsigned long buffer_size, int use_huge_tlb);
-struct ipc_peer* ipc_link(int channel_id);
+struct ipc_peer* ipc_create(i32 channel_id, u64 buffer_size, i32 use_huge_tlb);
+struct ipc_peer* ipc_link(i32 channel_id);
 
-long ipc_unlink(struct ipc_peer* pr);
-long ipc_destroy(struct ipc_peer* pr);
+i32 ipc_unlink(struct ipc_peer* pr);
+i32 ipc_destroy(struct ipc_peer* pr);
 
-long ipc_write(struct ipc_peer* pr, const void* buff, long size);
-long ipc_read(struct ipc_peer* pr, void* buff, long size);
+i32 ipc_write(struct ipc_peer* pr, const void* buff, i32 size);
+i32 ipc_read(struct ipc_peer* pr, void* buff, i32 size);
 
 
 #endif

@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include "core/ipc.h"
 #include "core/shmem.h"
 #include "core/ringbuf.h"
@@ -18,10 +19,10 @@ static struct mmcache* __the_ipc_zone = 0;
 
 static inline struct _ipc_peer_impl* _conv_peer(struct ipc_peer* pr)
 {
-	return (struct _ipc_peer_impl*)((unsigned long)pr - (unsigned long)&(((struct _ipc_peer_impl*)(0))->_the_peer));
+	return (struct _ipc_peer_impl*)((u64)pr - (u64)&(((struct _ipc_peer_impl*)(0))->_the_peer));
 }
 
-static inline long _ipc_try_restore_zone(void)
+static inline i32 _ipc_try_restore_zone(void)
 {
 	if(!__the_ipc_zone)
 	{
@@ -44,10 +45,10 @@ error_ret:
 
 }
 
-struct ipc_peer* ipc_create(int channel_id, unsigned long buffer_size, int use_huge_tlb)
+struct ipc_peer* ipc_create(i32 channel_id, u64 buffer_size, i32 use_huge_tlb)
 {
-	long rslt;
-	int shmm_key = -1;
+	i32 rslt;
+	i32 shmm_key = -1;
 	void* addr_begin;
 	void* addr_end;
 	struct _ipc_peer_impl* ipi = 0;
@@ -93,10 +94,10 @@ error_ret:
 	return 0;
 }
 
-struct ipc_peer* ipc_link(int channel_id)
+struct ipc_peer* ipc_link(i32 channel_id)
 {
-	long rslt;
-	int shmm_key = -1;
+	i32 rslt;
+	i32 shmm_key = -1;
 	void* addr_begin;
 	void* addr_end;
 	struct _ipc_peer_impl* ipi = 0;
@@ -141,7 +142,7 @@ error_ret:
 	return 0;
 }
 
-long ipc_unlink(struct ipc_peer* pr)
+i32 ipc_unlink(struct ipc_peer* pr)
 {
 	struct _ipc_peer_impl* ipi = _conv_peer(pr);
 //	if(!ipi) goto error_ret;
@@ -164,7 +165,7 @@ error_ret:
 }
 
 
-long ipc_destroy(struct ipc_peer* pr)
+i32 ipc_destroy(struct ipc_peer* pr)
 {
 	struct _ipc_peer_impl* ipi = _conv_peer(pr);
 	if(!ipi) goto error_ret;
@@ -186,7 +187,7 @@ error_ret:
 	return -1;
 }
 
-long ipc_write(struct ipc_peer* pr, const void* buff, long size)
+i32 ipc_write(struct ipc_peer* pr, const void* buff, i32 size)
 {
 	struct _ipc_peer_impl* ipi = _conv_peer(pr);
 	if(!ipi) goto error_ret;
@@ -199,7 +200,7 @@ error_ret:
 	return -1;
 }
 
-long ipc_read(struct ipc_peer* pr, void* buff, long size)
+i32 ipc_read(struct ipc_peer* pr, void* buff, i32 size)
 {
 	struct _ipc_peer_impl* ipi = _conv_peer(pr);
 	if(!ipi) goto error_ret;

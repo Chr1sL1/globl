@@ -1,14 +1,9 @@
+#include "common_types.h"
 #include "core/timer.h"
 #include "core/dlist.h"
 #include "core/misc.h"
 #include "core/mmspace.h"
 #include <stdio.h>
-
-
-#ifdef _WIN32
-#include <intrin.h>
-#pragma intrinsic(_BitScanReverse64)
-#endif
 
 #define TIMER_NODE_ZONE_NAME "timer_node_zone"
 
@@ -32,11 +27,11 @@
 
 struct timer_node
 {
-	int _magic;
-	int _run_once;
+	i32 _magic;
+	i32 _run_once;
 
-	unsigned long _run_tick;
-	unsigned long _delay_tick;
+	u64 _run_tick;
+	u64 _delay_tick;
 	timer_func_t _callback_func;
 	void* _func_param;
 
@@ -50,7 +45,7 @@ struct tv_set
 
 struct timer_wheel
 {
-	unsigned long _current_tick;
+	u64 _current_tick;
 	struct dlist _tv_set0[TV_SET0_SIZE];
 	struct tv_set _tv_set[TV_SET_CNT];
 };
@@ -58,7 +53,7 @@ struct timer_wheel
 static struct timer_wheel __the_timer_wheel;
 static struct mmcache* __the_timer_node_zone = 0;
 
-static inline int _timer_node_try_restore_zone(void)
+static inline i32 _timer_node_try_restore_zone(void)
 {
 	if(!__the_timer_node_zone)
 	{
@@ -81,26 +76,26 @@ error_ret:
 
 }
 
-int init_timer(void)
+i32 init_timer(void)
 {
 	err_exit(_timer_node_try_restore_zone() < 0, "init_timer: restore zone failed.");
 
-//	printf("mask3: %x\n", TV_SET_MASK(3));
-//	printf("mask2: %x\n", TV_SET_MASK(2));
-//	printf("mask1: %x\n", TV_SET_MASK(1));
-//	printf("mask0: %x\n", TV_SET_MASK(0));
+//	pri32f("mask3: %x\n", TV_SET_MASK(3));
+//	pri32f("mask2: %x\n", TV_SET_MASK(2));
+//	pri32f("mask1: %x\n", TV_SET_MASK(1));
+//	pri32f("mask0: %x\n", TV_SET_MASK(0));
 
 
 	__the_timer_wheel._current_tick = 0;
 
-	for (int i = 0; i < TV_SET0_SIZE; ++i)
+	for (i32 i = 0; i < TV_SET0_SIZE; ++i)
 	{
 		lst_new(&__the_timer_wheel._tv_set0[i]);
 	}
 
-	for (int i = 0; i < TV_SET_CNT; ++i)
+	for (i32 i = 0; i < TV_SET_CNT; ++i)
 	{
-		for (int j = 0; j < TV_SET_SIZE; ++j)
+		for (i32 j = 0; j < TV_SET_SIZE; ++j)
 		{
 			lst_new(&__the_timer_wheel._tv_set[i]._list[j]);
 		}
@@ -113,10 +108,10 @@ error_ret:
 
 static inline void _add_timer(struct timer_node* tn)
 {
-	long cur_idx;
-	long diff_tick = tn->_run_tick - __the_timer_wheel._current_tick;
+	i32 cur_idx;
+	i32 diff_tick = tn->_run_tick - __the_timer_wheel._current_tick;
 
-//	printf("diff tick: %d\n", diff_tick);
+//	pri32f("diff tick: %d\n", diff_tick);
 
 	if (diff_tick < TV_SET0_SIZE)
 	{
@@ -124,9 +119,9 @@ static inline void _add_timer(struct timer_node* tn)
 	}
 	else
 	{
-		unsigned int idx;
+		u32 idx;
 
-		for(int i = TV_SET_CNT - 1; i >= 0; --i)
+		for(i32 i = TV_SET_CNT - 1; i >= 0; --i)
 		{
 			idx = ((diff_tick & TV_SET_MASK_IDX(i)) >> TV_SET_SHIFT_BITS(i));
 			if(idx > 0)
@@ -134,7 +129,7 @@ static inline void _add_timer(struct timer_node* tn)
 				cur_idx = ((__the_timer_wheel._current_tick & TV_SET_MASK_IDX(i)) >> TV_SET_SHIFT_BITS(i));
 
 				idx = ((idx + cur_idx) & TV_SETN_MASK);
-//				printf("add to [%d:%d]\n", i, idx);
+//				pri32f("add to [%d:%d]\n", i, idx);
 				lst_push_back(&__the_timer_wheel._tv_set[i]._list[idx], &tn->_lln);
 				break;
 			}
@@ -143,7 +138,7 @@ static inline void _add_timer(struct timer_node* tn)
 }
 
 
-struct timer_node* timer_schedule(unsigned int delay_tick, timer_func_t callback_func, int rune_once, void* param)
+struct timer_node* timer_schedule(u32 delay_tick, timer_func_t callback_func, i32 rune_once, void* param)
 {
 	struct timer_node* _node = NULL;
 
@@ -187,7 +182,7 @@ error_ret:
 
 static inline  void __casade0(void)
 {
-	int list_idx = ((__the_timer_wheel._current_tick & TV_SET_MASK_IDX(0)) >> TV_SET0_BITS);
+	i32 list_idx = ((__the_timer_wheel._current_tick & TV_SET_MASK_IDX(0)) >> TV_SET0_BITS);
 
 	struct dlnode* node = lst_first(&__the_timer_wheel._tv_set[0]._list[list_idx]);
 	while (node != lst_last(&__the_timer_wheel._tv_set[0]._list[list_idx]))
@@ -195,17 +190,17 @@ static inline  void __casade0(void)
 		struct dlnode* cur_node = node;
 		node = node->next;
 
-		struct timer_node* tn = (struct timer_node*)((unsigned long)cur_node - (unsigned long)&((struct timer_node*)(0))->_lln);
+		struct timer_node* tn = (struct timer_node*)((u64)cur_node - (u64)&((struct timer_node*)(0))->_lln);
 		lst_remove_node(cur_node);
 
 		_add_timer(tn);
 	}
 }
 
-static void __casade(int i)
+static void __casade(i32 i)
 {
-	int idx, cnt = 0;
-	int list_idx = ((__the_timer_wheel._current_tick & TV_SET_MASK_IDX(i + 1)) >> TV_SET_SHIFT_BITS(i + 1));
+	i32 idx, cnt = 0;
+	i32 list_idx = ((__the_timer_wheel._current_tick & TV_SET_MASK_IDX(i + 1)) >> TV_SET_SHIFT_BITS(i + 1));
 
 	struct dlnode* node = lst_first(&__the_timer_wheel._tv_set[i + 1]._list[list_idx]);
 	while (node != lst_last(&__the_timer_wheel._tv_set[i + 1]._list[list_idx]))
@@ -213,7 +208,7 @@ static void __casade(int i)
 		struct dlnode* cur_node = node;
 		node = node->next;
 
-		struct timer_node* tn = (struct timer_node*)((unsigned long)cur_node - (unsigned long)&((struct timer_node*)(0))->_lln);
+		struct timer_node* tn = (struct timer_node*)((u64)cur_node - (u64)&((struct timer_node*)(0))->_lln);
 		lst_remove_node(cur_node);
 
 		_add_timer(tn);
@@ -243,7 +238,7 @@ void on_tick(void)
 		struct dlnode* cur_node = node;
 		node = node->next;
 
-		struct timer_node* tn = (struct timer_node*)((unsigned long)cur_node - (unsigned long)&((struct timer_node*)(0))->_lln);
+		struct timer_node* tn = (struct timer_node*)((u64)cur_node - (u64)&((struct timer_node*)(0))->_lln);
 
 		(*tn->_callback_func)(tn, tn->_func_param);
 
@@ -260,7 +255,7 @@ void on_tick(void)
 	++__the_timer_wheel._current_tick;
 }
 
-unsigned long dbg_current_tick(void)
+u64 dbg_current_tick(void)
 {
 	return __the_timer_wheel._current_tick;
 }

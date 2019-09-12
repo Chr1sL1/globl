@@ -3,37 +3,37 @@
 
 struct acceptor 
 {
-	unsigned int local_ip;
-	unsigned int local_port;
+	u32 local_ip;
+	u32 local_port;
 };
 
 struct session
 {
-	unsigned int remote_ip;
-	unsigned int remote_port;
+	u32 remote_ip;
+	u32 remote_port;
 	void* usr_ptr;
 };
 
 // return 0 if succeed, return -1 if any error occurs.
-typedef long (*on_acc_func)(struct acceptor* acc, struct session* se);
-typedef long (*on_conn_func)(struct session* se);
-typedef long (*on_disconn_func)(struct session* se);
-typedef long (*on_recv_func)(struct session* se, const void* buf, long len);
+typedef i32 (*on_acc_func)(struct acceptor* acc, struct session* se);
+typedef i32 (*on_conn_func)(struct session* se);
+typedef i32 (*on_disconn_func)(struct session* se);
+typedef i32 (*on_recv_func)(struct session* se, const void* buf, i32 len);
 
 //enum NET_TYPE
 //{
-//	NT_INTERNET,
-//	NT_INTRANET,
+//	NT_i32ERNET,
+//	NT_i32RANET,
 //
 //	NT_COUNT,
 //};
 
 struct net_config
 {
-	unsigned int send_buff_len;
-	unsigned int recv_buff_len;
-	unsigned int nr_acceptor;
-	unsigned int nr_session;
+	u32 send_buff_len;
+	u32 recv_buff_len;
+	u32 nr_acceptor;
+	u32 nr_session;
 };
 
 struct net_ops
@@ -58,19 +58,19 @@ struct net_struct
 };
 
 struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops);
-long net_destroy(struct net_struct* net);
+i32 net_destroy(struct net_struct* net);
 
-struct acceptor* net_create_acceptor(struct net_struct* net, unsigned int ip, unsigned short port);
-long net_destroy_acceptor(struct acceptor* acc);
+struct acceptor* net_create_acceptor(struct net_struct* net, u32 ip, u16 port);
+i32 net_destroy_acceptor(struct acceptor* acc);
 
-struct session* net_connect(struct net_struct* net, unsigned int ip, unsigned short port);
-long net_disconnect(struct session* ses);
+struct session* net_connect(struct net_struct* net, u32 ip, u16 port);
+i32 net_disconnect(struct session* ses);
 
-long net_send(struct session* ses, const char* data, int data_len);
-long net_run(struct net_struct* net, int timeout);
+i32 net_send(struct session* ses, const char* data, i32 data_len);
+i32 net_run(struct net_struct* net, i32 timeout);
 
-long net_bind_session_ops(struct session* ses, const struct session_ops* ops);
-long net_session_count(struct net_struct* net);
+i32 net_bind_session_ops(struct session* ses, const struct session_ops* ops);
+i32 net_session_count(struct net_struct* net);
 
 
 #endif

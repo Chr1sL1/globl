@@ -1,5 +1,4 @@
-#define _GNU_SOURCE
-
+#include "common_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +8,7 @@
 
 #include "core/ipc_channel.h"
 #include "core/misc.h"
+#include "core/asm.h"
 
 #pragma pack(1)
 struct test_msg

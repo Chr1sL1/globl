@@ -14,11 +14,11 @@ struct mmpool* mmp_create(void* addr, struct mm_config* cfg);
 struct mmpool* mmp_load(void* addr);
 void mmp_destroy(struct mmpool* mmp);
 
-void* mmp_alloc(struct mmpool* mmp, unsigned long size);
-long mmp_free(struct mmpool* mmp, void* p);
+void* mmp_alloc(struct mmpool* mmp, u64 size);
+i32 mmp_free(struct mmpool* mmp, void* p);
 
-long mmp_check(struct mmpool* mmp);
-long mmp_freelist_profile(struct mmpool* mmp);
+i32 mmp_check(struct mmpool* mmp);
+i32 mmp_freelist_profile(struct mmpool* mmp);
 
 
 #endif

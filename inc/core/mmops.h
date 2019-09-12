@@ -3,28 +3,28 @@
 
 struct mm_config
 {
-	unsigned long total_size;
+	u64 total_size;
 
 	union
 	{
 		// for mmpool
 		struct
 		{
-			unsigned int min_order;
-			unsigned int max_order;
+			u32 min_order;
+			u32 max_order;
 		};
 
 		// for pgpool
 		struct
 		{
-			unsigned int page_size;
-			unsigned int maxpg_count;
+			u32 page_size;
+			u32 maxpg_count;
 		};
 
 		// for stkpool
 		struct
 		{
-			unsigned int stk_frm_size;
+			u32 stk_frm_size;
 		};
 	};
 };
@@ -32,9 +32,9 @@ struct mm_config
 typedef void* (*mm_ops_create)(void*, struct mm_config*);
 typedef void* (*mm_ops_load)(void*);
 typedef void (*mm_ops_destroy)(void*);
-typedef void* (*mm_ops_alloc)(void*, unsigned long);
-typedef long (*mm_ops_free)(void*, void*);
-typedef void (*mm_ops_counts)(void*, unsigned long*, unsigned long*);
+typedef void* (*mm_ops_alloc)(void*, u64);
+typedef i32 (*mm_ops_free)(void*, void*);
+typedef void (*mm_ops_counts)(void*, u64*, u64*);
 
 struct mm_ops
 {
@@ -49,8 +49,8 @@ struct mm_ops
 };
 
 
-int create_mmspace_key(int area_type, int area_idx, int app_type, int app_idx);
-int create_ipc_channel_key(int service_type, int service_idx);
+i32 create_mmspace_key(i32 area_type, i32 area_idx, i32 app_type, i32 app_idx);
+i32 create_ipc_channel_key(i32 service_type, i32 service_idx);
 
 #endif
 

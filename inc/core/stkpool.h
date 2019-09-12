@@ -15,7 +15,7 @@ struct stkpool* stkp_load(void* addr);
 void stkp_destroy(struct stkpool* stkp);
 
 void* stkp_alloc(struct stkpool* stkp);
-long stkp_free(struct stkpool* stkp, void* p);
+i32 stkp_free(struct stkpool* stkp, void* p);
 
 #endif
 

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "common_types.h"
 #include "core/slist.h"
 #include "core/misc.h"
 

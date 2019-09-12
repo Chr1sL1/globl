@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include "core/bin_tree.h"
 
 void bt_fillnew(struct btnode* node)
@@ -7,7 +8,7 @@ void bt_fillnew(struct btnode* node)
 	node->rchild = 0;
 }
 
-long bt_insert(struct bintree* t, struct btnode* parent, struct btnode* node)
+i32 bt_insert(struct bintree* t, struct btnode* parent, struct btnode* node)
 {
 	if(t == 0 || parent == 0 || node == 0) goto error_ret;
 
@@ -24,7 +25,7 @@ error_ret:
 	return -1;
 }
 
-long bt_remove(struct bintree* t, struct btnode* node)
+i32 bt_remove(struct bintree* t, struct btnode* node)
 {
 	if(t == 0 || node == 0) goto error_ret;
 

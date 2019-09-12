@@ -1,26 +1,7 @@
-#ifndef __hash_h__
-#define __hash_h__
+#ifndef _HASH_H_
+#define _HASH_H_
 
-#include "dlist.h"
+u64 hash_file_name(const char* pcszFileName);
+u32 hash_string(const char* pcszString);
 
-#define HASH_KEY_LEN (64)
-
-struct hash_node
-{
-	struct dlnode list_node;
-	char hash_key[HASH_KEY_LEN];
-};
-
-
-struct hash_table
-{
-	unsigned long bucket_size;
-	struct dlist* hash_list;
-};
-
-long hash_insert(struct hash_table* ht, struct hash_node* hn);
-struct hash_node* hash_search(struct hash_table* ht, const char* key);
-long hash_remove(struct hash_table* ht, const char* key);
-
-#endif
-
+#endif	// _HASH_H_

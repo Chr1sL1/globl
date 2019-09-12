@@ -1,6 +1,7 @@
+#include "common_types.h"
 #include "core/dlist.h"
 
-inline long lst_new(struct dlist* lst)
+inline i32 lst_new(struct dlist* lst)
 {
 	if(!lst) goto error_ret; 
 
@@ -17,7 +18,7 @@ error_ret:
 	return -1;
 }
 
-inline long lst_clr(struct dlnode* node)
+inline i32 lst_clr(struct dlnode* node)
 {
 	if(!node) goto error_ret;
 
@@ -29,7 +30,7 @@ error_ret:
 	return -1;
 }
 
-inline long lst_empty(struct dlist* lst)
+inline i32 lst_empty(struct dlist* lst)
 {
 	if(lst->head.next == &lst->tail || lst->tail.prev == &lst->head)
 		return 1;
@@ -38,7 +39,7 @@ inline long lst_empty(struct dlist* lst)
 }
 
 
-inline long lst_insert_before(struct dlist* lst, struct dlnode* suc, struct dlnode* node)
+inline i32 lst_insert_before(struct dlist* lst, struct dlnode* suc, struct dlnode* node)
 {
 	if(!lst || !suc || !node) goto error_ret;
 	if(suc == &lst->head) goto error_ret;
@@ -59,7 +60,7 @@ error_ret:
 	return -1;
 }
 
-inline long lst_insert_after(struct dlist* lst, struct dlnode* prv, struct dlnode* node)
+inline i32 lst_insert_after(struct dlist* lst, struct dlnode* prv, struct dlnode* node)
 {
 	if(!lst || !prv || !node) goto error_ret;
 	if(prv == &lst->tail) goto error_ret;
@@ -80,7 +81,7 @@ error_ret:
 	return -1;
 }
 
-inline long lst_remove(struct dlist* lst, struct dlnode* node)
+inline i32 lst_remove(struct dlist* lst, struct dlnode* node)
 {
 	if(!lst || !node) goto error_ret;
 	if(!node->prev || !node->next) goto error_ret;
@@ -100,7 +101,7 @@ error_ret:
 	return -1;
 }
 
-long lst_remove_node(struct dlnode* node)
+i32 lst_remove_node(struct dlnode* node)
 {
 	if(!node) goto error_ret;
 	if(!node->prev || !node->next) goto error_ret;
@@ -119,14 +120,14 @@ error_ret:
 }
 
 
-inline long lst_push_back(struct dlist* lst, struct dlnode* node)
+inline i32 lst_push_back(struct dlist* lst, struct dlnode* node)
 {
 	return lst_insert_before(lst, &lst->tail, node);
 error_ret:
 	return -1;
 }
 
-inline long lst_push_front(struct dlist* lst, struct dlnode* node)
+inline i32 lst_push_front(struct dlist* lst, struct dlnode* node)
 {
 	return lst_insert_after(lst, &lst->head, node);
 error_ret:
@@ -169,7 +170,7 @@ error_ret:
 	return 0;
 
 }
-static long _lst_check_loop(struct dlist* lst)
+static i32 _lst_check_loop(struct dlist* lst)
 {
 	struct dlnode* pf = lst->head.next;
 	struct dlnode* ps = lst->head.next;
@@ -208,7 +209,7 @@ static long _lst_check_loop(struct dlist* lst)
 	return 0;
 }
 
-long lst_check(struct dlist* lst)
+i32 lst_check(struct dlist* lst)
 {
 	return _lst_check_loop(lst);
 }

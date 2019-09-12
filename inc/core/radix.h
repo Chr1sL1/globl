@@ -14,8 +14,8 @@ struct radix_node
 struct radix_tree
 {
 	struct radix_node* root;
-	long depth;
-	long layer_node_count;
+	i32 depth;
+	i32 layer_node_count;
 };
 
 

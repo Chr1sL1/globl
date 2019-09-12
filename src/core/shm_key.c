@@ -1,3 +1,4 @@
+#include "common_types.h"
 #include "core/shm_key.h"
 #include "core/misc.h"
 
@@ -61,11 +62,11 @@ union shm_key
 		};
 	};
 
-	int the_key;
+	i32 the_key;
 };
 #pragma pack()
 
-int create_mmspace_key(int area_type, int area_idx, int app_type, int app_idx)
+i32 create_mmspace_key(i32 area_type, i32 area_idx, i32 app_type, i32 app_idx)
 {
 	union shm_key key;
 	key.the_key = 0;
@@ -86,7 +87,7 @@ error_ret:
 	return -1;
 }
 
-int create_ipc_channel_key(int service_type, int service_idx)
+i32 create_ipc_channel_key(i32 service_type, i32 service_idx)
 {
 	union shm_key key;
 	key.the_key = 0;
@@ -104,7 +105,7 @@ error_ret:
 	return -1;
 }
 
-int create_msg_pool_key(int service_type, int service_idx, int pool_order, int pool_idx)
+i32 create_msg_pool_key(i32 service_type, i32 service_idx, i32 pool_order, i32 pool_idx)
 {
 	union shm_key key;
 	key.the_key = 0;

@@ -1,7 +1,9 @@
+#include "common_types.h"
 #include "core/stkpool.h"
 #include "core/mmops.h"
-#include "core/misc.h"
 #include "core/dlist.h"
+#include "core/misc.h"
+#include "core/asm.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -23,13 +25,13 @@ struct _stkp_node
 
 struct _stkp_impl
 {
-	unsigned long _stkp_tag;
+	u64 _stkp_tag;
 	struct stkpool _the_pool;
 	struct dlist _free_list;
 	void* _payload_trunk_addr;
-	unsigned long _stk_frm_size;
-	unsigned long _stk_frm_cnt;
-	unsigned long _sys_pg_size;
+	u64 _stk_frm_size;
+	u64 _stk_frm_cnt;
+	u64 _sys_pg_size;
 	struct _stkp_node _node_pool[0];
 };
 
@@ -49,24 +51,24 @@ static void __stkp_destroy_agent(void* alloc)
 	stkp_destroy((struct stkpool*)alloc);
 }
 
-static void* __stkp_alloc_agent(void* alloc, unsigned long size)
+static void* __stkp_alloc_agent(void* alloc, u64 size)
 {
 	return stkp_alloc((struct stkpool*)alloc);
 }
 
-static long __stkp_free_agent(void* alloc, void* p)
+static i32 __stkp_free_agent(void* alloc, void* p)
 {
 	return stkp_free((struct stkpool*)alloc, p);
 }
 
 static inline void _set_payload(struct _stkp_node* node, void* payload)
 {
-	node->_payload_addr = (void*)((unsigned long)payload | node->using);
+	node->_payload_addr = (void*)((u64)payload | node->using);
 }
 
 static inline void* _get_payload(struct _stkp_node* node)
 {
-	return (void*)(((unsigned long)(node->_payload_addr)) & (~3));
+	return (void*)(((u64)(node->_payload_addr)) & (~3));
 }
 
 struct mm_ops __stkp_ops =
@@ -81,12 +83,12 @@ struct mm_ops __stkp_ops =
 
 static inline struct _stkp_impl* _conv_impl(struct stkpool* stkp)
 {
-	return (struct _stkp_impl*)((void*)stkp - (unsigned long)(&((struct _stkp_impl*)(0))->_the_pool));
+	return (struct _stkp_impl*)((void*)stkp - (u64)(&((struct _stkp_impl*)(0))->_the_pool));
 }
 
 static inline struct _stkp_node* _conv_dln(struct dlnode* dln)
 {
-	return (struct _stkp_node*)((void*)dln- (unsigned long)(&((struct _stkp_node*)(0))->_dln));
+	return (struct _stkp_node*)((void*)dln- (u64)(&((struct _stkp_node*)(0))->_dln));
 }
 
 static inline struct _stkp_node* _get_dln_by_payload(struct _stkp_impl* stkpi, void* payload)
@@ -94,12 +96,12 @@ static inline struct _stkp_node* _get_dln_by_payload(struct _stkp_impl* stkpi, v
 	return &stkpi->_node_pool[(payload - stkpi->_payload_trunk_addr) / stkpi->_stk_frm_size];
 }
 
-struct _stkp_impl* _stkp_init(void* addr, unsigned long total_size, unsigned int stk_frm_size)
+struct _stkp_impl* _stkp_init(void* addr, u64 total_size, u32 stk_frm_size)
 {
-	long rslt = 0;
+	i32 rslt = 0;
 	void* cur_ptr;
 	void* payload_ptr;
-	unsigned long frm_cnt = 0;
+	u64 frm_cnt = 0;
 	struct _stkp_impl* stkpi;
 
 	stkpi = (struct _stkp_impl*)addr;
@@ -110,7 +112,7 @@ struct _stkp_impl* _stkp_init(void* addr, unsigned long total_size, unsigned int
 
 	stkpi->_stkp_tag = STKP_TAG;
 	stkpi->_the_pool.addr_begin = addr;
-	stkpi->_the_pool.addr_end = (void*)round_down((unsigned long)addr + total_size, stkpi->_stk_frm_size);
+	stkpi->_the_pool.addr_end = (void*)round_down((u64)addr + total_size, stkpi->_stk_frm_size);
 
 	lst_new(&stkpi->_free_list);
 
@@ -128,7 +130,7 @@ struct _stkp_impl* _stkp_init(void* addr, unsigned long total_size, unsigned int
 	err_exit(stkpi->_stk_frm_cnt == 0, "not enough space for allocate.");
 	stkpi->_payload_trunk_addr = stkpi->_the_pool.addr_end - stkpi->_stk_frm_size * stkpi->_stk_frm_cnt;
 
-	for(int i = 0; i < stkpi->_stk_frm_cnt; ++i)
+	for(i32 i = 0; i < stkpi->_stk_frm_cnt; ++i)
 	{
 		lst_clr(&stkpi->_node_pool[i]._dln);
 
@@ -150,7 +152,7 @@ struct stkpool* stkp_create(void* addr, struct mm_config* cfg)
 {
 	struct _stkp_impl* stkpi;
 
-	err_exit((!addr || ((unsigned long)addr & 7) != 0), "address must be 8-byte aligned.");
+	err_exit((!addr || ((u64)addr & 7) != 0), "address must be 8-byte aligned.");
 	err_exit(cfg->stk_frm_size < MIN_STK_SIZE, "stack frame size must be >= %lu", MIN_STK_SIZE);
 
 	stkpi = _stkp_init(addr, cfg->total_size, cfg->stk_frm_size);
@@ -165,7 +167,7 @@ error_ret:
 struct stkpool* stkp_load(void* addr)
 {
 	struct _stkp_impl* stkpi;
-	err_exit((!addr || ((unsigned long)addr & 7) != 0), "invalid argument: address must be 8-byte aligned.");
+	err_exit((!addr || ((u64)addr & 7) != 0), "invalid argument: address must be 8-byte aligned.");
 
 	stkpi = _conv_impl((struct stkpool*)addr);
 
@@ -178,7 +180,7 @@ error_ret:
 
 void stkp_destroy(struct stkpool* stkp)
 {
-	long rslt;
+	i32 rslt;
 	void* p;
 	struct _stkp_impl* stkpi;
 
@@ -189,7 +191,7 @@ void stkp_destroy(struct stkpool* stkp)
 
 
 	// restore mprotected pages.
-	for(int i = 0; i < stkpi->_stk_frm_cnt; ++i)
+	for(i32 i = 0; i < stkpi->_stk_frm_cnt; ++i)
 	{
 		rslt = mprotect(p, stkpi->_sys_pg_size, PROT_READ | PROT_WRITE);
 		if(rslt < 0)
@@ -225,9 +227,9 @@ error_ret:
 	return 0;
 }
 
-long stkp_free(struct stkpool* stkp, void* p)
+i32 stkp_free(struct stkpool* stkp, void* p)
 {
-	long idx;
+	i32 idx;
 	struct _stkp_impl* stkpi;
 
 	err_exit(!stkp, "invalid argument.");
@@ -235,7 +237,7 @@ long stkp_free(struct stkpool* stkp, void* p)
 
 	stkpi = _conv_impl(stkp);
 
-	err_exit((unsigned long)p & (stkpi->_sys_pg_size - 1), "invalid ptr.");
+	err_exit((u64)p & (stkpi->_sys_pg_size - 1), "invalid ptr.");
 
 	p -= stkpi->_sys_pg_size;
 
