@@ -29,15 +29,18 @@
 #define sfence	asm volatile ("sfence")
 #define spin_wait asm volatile ("pause")
 
-inline i64 get_max(i64 a, i64 b)
+static inline i64 get_max(i64 a, i64 b)
 {
 	return a - ((a-b) & (a-b) >> 63);
 }
 
-inline i64 get_min(i64 a, i64 b)
+static inline i64 get_min(i64 a, i64 b)
 {
 	return b + ((a-b) & (a-b) >> 63);
 }
+
+void rand_init(u32 seed);
+i64 rand_ex(u64 range);
 
 
 #endif

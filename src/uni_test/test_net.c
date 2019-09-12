@@ -14,18 +14,18 @@
 
 #define SVR_SESSION_ZONE_NAME "test_svr_session_zone"
 #define USR_TYPE_INFO (0x123123)
-#define MAX_LIVE_INTERVAL (10000)
+#define MAX_LIVE_i32ERVAL (10000)
 
 #define TEST_CONN_COUNT (10)
 
 static struct mmcache* __svr_session_zone = 0;
-static long __running = 1;
-static unsigned long __start_time = 0;
-static unsigned long __time_val = 0;
+static i32 __running = 1;
+static u64 __start_time = 0;
+static u64 __time_val = 0;
 
-static unsigned long __recv_bytes_server = 0;
-static unsigned long __recv_bytes_client = 0;
-static unsigned long __send_bytes = 0;
+static u64 __recv_bytes_server = 0;
+static u64 __recv_bytes_client = 0;
+static u64 __send_bytes = 0;
 
 enum USR_SESSION_STATE
 {
@@ -48,19 +48,19 @@ static struct net_config __cfg =
 struct svr_session
 {
 	struct session* s;
-	unsigned int state;
+	u32 state;
 };
 
 struct usr_session
 {
 	struct session* s;
-	unsigned int idx;
-	unsigned int state;
-	unsigned long type_info;
-	unsigned long conn_tick;
-	unsigned long disconn_tick;
-	unsigned long live_interval;
-	unsigned long sleep_interval;
+	u32 idx;
+	u32 state;
+	u64 type_info;
+	u64 conn_tick;
+	u64 disconn_tick;
+	u64 live_i32erval;
+	u64 sleep_i32erval;
 };
 
 static struct usr_session __conn_session[TEST_CONN_COUNT] =
@@ -72,8 +72,8 @@ static struct usr_session __conn_session[TEST_CONN_COUNT] =
 		.type_info = USR_TYPE_INFO,
 		.conn_tick = 0,
 		.disconn_tick = 0,
-		.live_interval = 0,
-		.sleep_interval = 0,
+		.live_i32erval = 0,
+		.sleep_i32erval = 0,
 	}
 };
 
@@ -94,12 +94,12 @@ error_ret:
 	return;
 }
 
-static void _signal_stop(int sig, siginfo_t* t, void* usr_data)
+static void _signal_stop(i32 sig, siginfo_t* t, void* usr_data)
 {
 	__running = 0;
 }
 
-static long _restore_zone(void)
+static i64 _restore_zone(void)
 {
 	if(!__svr_session_zone)
 		__svr_session_zone = mm_search_zone(SVR_SESSION_ZONE_NAME);
@@ -117,9 +117,9 @@ error_ret:
 	return -1;
 }
 
-static long on_acc(struct acceptor* acc, struct session* se)
+static i32 on_acc(struct acceptor* acc, struct session* se)
 {
-	long rslt;
+	i32 rslt;
 	struct svr_session* ss;
 
 	ss = mm_cache_alloc(__svr_session_zone);
@@ -132,9 +132,9 @@ error_ret:
 	return -1;
 }
 
-static long on_server_disconn(struct session* se)
+static i32 on_server_disconn(struct session* se)
 {
-	long rslt;
+	i32 rslt;
 	struct svr_session* ss = (struct svr_session*)se->usr_ptr;
 
 	ss->s = 0;
@@ -150,7 +150,7 @@ error_ret:
 	return -1;
 }
 
-static long on_server_recv(struct session* se, const void* buf, long len)
+static i32 on_server_recv(struct session* se, const void* buf, i32 len)
 {
 	__recv_bytes_server += len;
 //	if(len < 4)
@@ -164,7 +164,7 @@ error_ret:
 }
 
 
-static long on_client_recv(struct session* se, const void* buf, long len)
+static i32 on_client_recv(struct session* se, const void* buf, i32 len)
 {
 	__recv_bytes_client += len;
 
@@ -173,12 +173,12 @@ error_ret:
 	return -1;
 }
 
-static void set_state(struct usr_session* us, int state)
+static void set_state(struct usr_session* us, i32 state)
 {
 	us->state = state;
 }
 
-static long on_client_conn(struct session* se)
+static i32 on_client_conn(struct session* se)
 {
 	struct usr_session* us = (struct usr_session*)se->usr_ptr;
 	err_exit(!us, "strange error in on_client_conn");
@@ -193,8 +193,8 @@ static long on_client_conn(struct session* se)
 
 	set_state(us, USS_RUNNING);
 	us->conn_tick = __time_val;
-	us->live_interval = random() % MAX_LIVE_INTERVAL;
-	us->sleep_interval = random() % MAX_LIVE_INTERVAL;
+	us->live_i32erval = random() % MAX_LIVE_i32ERVAL;
+	us->sleep_i32erval = random() % MAX_LIVE_i32ERVAL;
 
 //	if(us->idx < 100)
 //		printf("client session connected [%d]\n", us->idx);
@@ -204,7 +204,7 @@ error_ret:
 	return -1;
 }
 
-static long on_client_disconn(struct session* se)
+static i32 on_client_disconn(struct session* se)
 {
 	struct usr_session* us = (struct usr_session*)se->usr_ptr;
 	err_exit(!us, "strange error in on_client_disconn");
@@ -223,11 +223,11 @@ error_ret:
 	return -1;
 }
 
-static int fill_send_data(char* buf, int size)
+static i32 fill_send_data(char* buf, i32 size)
 {
-	int len = random() % size;
+	i32 len = random() % size;
 
-	for(int i = 0; i < len; i++)
+	for(i32 i = 0; i < len; i++)
 	{
 		buf[i] = random() % 255;
 	}
@@ -235,7 +235,7 @@ static int fill_send_data(char* buf, int size)
 	return len;
 }
 
-static long run_connector(struct net_struct* net)
+static i32 run_connector(struct net_struct* net)
 {
 	struct session_ops ops = 
 	{
@@ -243,20 +243,20 @@ static long run_connector(struct net_struct* net)
 		.func_recv = on_client_recv,
 		.func_disconn = on_client_disconn,
 	};
-	unsigned long r1 = 0, r2 = 0;
-	int send_len;
-	int pending_count = 0;
-	unsigned int ip = inet_addr("10.85.45.212");
+	u64 r1 = 0, r2 = 0;
+	i32 send_len;
+	i32 pending_count = 0;
+	u32 ip = inet_addr("10.85.45.212");
 
 	char send_buf[net->cfg.send_buff_len];
 
 	r1 = rdtsc();
 
-	for(int i = 0; i < TEST_CONN_COUNT; ++i)
+	for(i32 i = 0; i < TEST_CONN_COUNT; ++i)
 	{
 		if(__conn_session[i].state == USS_DISCONNECTED)
 		{
-			if(__time_val - __conn_session[i].conn_tick < __conn_session[i].sleep_interval)
+			if(__time_val - __conn_session[i].conn_tick < __conn_session[i].sleep_i32erval)
 				continue;
 
 			__conn_session[i].idx = i;
@@ -274,7 +274,7 @@ static long run_connector(struct net_struct* net)
 
 		if(__conn_session[i].state == USS_RUNNING)
 		{
-			if(__time_val > __conn_session[i].conn_tick +  __conn_session[i].live_interval)
+			if(__time_val > __conn_session[i].conn_tick +  __conn_session[i].live_i32erval)
 			{
 //				if(i < 100) printf("try disconnect [%d]\n", i);
 				set_state(&__conn_session[i], USS_DISCONNECTING);
@@ -294,7 +294,7 @@ static long run_connector(struct net_struct* net)
 
 		if(__conn_session[i].state == USS_DISCONNECTING)
 		{
-			if(__conn_session[i].sleep_interval + __conn_session[i].disconn_tick + 3000 < __time_val)
+			if(__conn_session[i].sleep_i32erval + __conn_session[i].disconn_tick + 3000 < __time_val)
 				++pending_count;
 		}
 	}
@@ -311,11 +311,11 @@ error_ret:
 	return -1;
 }
 
-long net_test_server(int silent)
+i32 net_test_server(i32 silent)
 {
-	long rslt;
+	i32 rslt;
 
-	unsigned long count_tick = 0;
+	u64 count_tick = 0;
 
 	struct net_ops ops;
 	struct net_struct* net;
@@ -353,7 +353,7 @@ long net_test_server(int silent)
 
 	while(__running)
 	{
-		unsigned long time_diff;
+		u64 time_diff;
 		gettimeofday(&tv, 0);
 		__time_val = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 

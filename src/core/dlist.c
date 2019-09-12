@@ -30,12 +30,12 @@ error_ret:
 	return -1;
 }
 
-inline i32 lst_empty(struct dlist* lst)
+inline BOOL lst_empty(struct dlist* lst)
 {
 	if(lst->head.next == &lst->tail || lst->tail.prev == &lst->head)
-		return 1;
+		return TRUE;
 
-	return 0;
+	return FALSE;
 }
 
 

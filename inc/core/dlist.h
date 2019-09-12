@@ -16,8 +16,7 @@ struct dlist
 
 i32 lst_new(struct dlist* lst);
 i32 lst_clr(struct dlnode* node);
-i32 lst_empty(struct dlist* lst);
-
+BOOL lst_empty(struct dlist* lst);
 
 i32 lst_insert_before(struct dlist* lst, struct dlnode* suc, struct dlnode* node);
 i32 lst_insert_after(struct dlist* lst, struct dlnode* prv, struct dlnode* node);

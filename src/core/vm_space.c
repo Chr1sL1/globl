@@ -39,10 +39,10 @@
 #define VM_RAND_START_MIN		(128ULL * 1024 * 1024 * 1024)
 #define VM_RAND_SIZE			(16 * 1024)   // MB
 
-struct _VMSpace;
-struct _VMChunk;
+struct vm_space;
+struct vm_chunk;
 
-struct _VMSpace
+struct vm_space
 {
 	u64 qwTag;
 	void* pStartAddr;
@@ -58,7 +58,7 @@ struct _VMSpace
 	struct rbtree RBRoot;
 };
 
-struct _VMChunk
+struct vm_chunk
 {
 	u64 qwTag;
 	u64 qwChunkDataSize;
@@ -67,10 +67,10 @@ struct _VMChunk
 	char szName[VM_CHUNK_NAME_LEN];
 };
 
-static void* __pBrkAddr = 0;
-static u64 __qwMinSharedLibAddr = (u64)-1LL;
-static u64 __qwMaxSharedLibAddr = 0LL;
-static struct _VMSpace* __pVMSpace = NULL;
+static void* __brk_addr = 0;
+static u64 __min_so_addr = (u64)-1LL;
+static u64 __max_so_addr = 0LL;
+static struct vm_space* __the_space = NULL;
 
 #ifdef __linux__
 
@@ -87,11 +87,11 @@ static i32 __on_iterate_phdr(struct dl_phdr_info* info, size_t size, void* data)
 		u64 qwStartAddr = (u64)((info->dlpi_addr + info->dlpi_phdr[i].p_vaddr) & (~(VM_PAGE_SIZE - 1)));
 		u64 qwEndAddr = (u64)((info->dlpi_addr + info->dlpi_phdr[i].p_vaddr + info->dlpi_phdr[i].p_memsz + VM_PAGE_SIZE) & (~(VM_PAGE_SIZE - 1)));
 
-		if(qwStartAddr < __qwMinSharedLibAddr && qwStartAddr > (u64)__pBrkAddr)
-			__qwMinSharedLibAddr = qwStartAddr;
+		if(qwStartAddr < __min_so_addr && qwStartAddr > (u64)__brk_addr)
+			__min_so_addr = qwStartAddr;
 
-		if(qwEndAddr > __qwMaxSharedLibAddr && qwEndAddr > (u64)__pBrkAddr)
-			__qwMaxSharedLibAddr = qwEndAddr;
+		if(qwEndAddr > __max_so_addr && qwEndAddr > (u64)__brk_addr)
+			__max_so_addr = qwEndAddr;
 	}
 
 	return 0;
@@ -101,18 +101,18 @@ error_ret:
 
 static inline void __gather_placed_vm_area(void)
 {
-	__pBrkAddr = sbrk(0);
+	__brk_addr = sbrk(0);
 	dl_iterate_phdr(__on_iterate_phdr, NULL);
 }
 
 static inline i32 __check_vm_area_overlap(u64 qwStartAddr, u64 qwEndAddr)
 {
-	return qwEndAddr <= __qwMinSharedLibAddr || qwStartAddr >= __qwMaxSharedLibAddr;
+	return qwEndAddr <= __min_so_addr || qwStartAddr >= __max_so_addr;
 }
 
 #endif
 
-static inline i32 __destroy_vm_space(struct _VMSpace* pSpace);
+static inline i32 __destroy_vm_space(struct vm_space* pSpace);
 
 #ifdef __linux__
 static i32 __shm_get(i32 nKey, i32 bTryHugeTLB, i32 bCreateNew, u64* qwSize, i32* nTlbType)
@@ -183,9 +183,9 @@ i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB)
 	i32 nFd = 0, nTlbType = 0;
 	void* pAddr = NULL;
 
-	err_exit(__pVMSpace != NULL, "");
+	err_exit(__the_space != NULL, "");
 
-	qwSize = round_up(qwSize + sizeof(struct _VMSpace), VM_PAGE_SIZE);
+	qwSize = round_up(qwSize + sizeof(struct vm_space), VM_PAGE_SIZE);
 
 #ifdef __linux__
 
@@ -199,34 +199,34 @@ i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB)
 	nFd = __shm_get(nKey, bTryHugeTLB, 1, &qwSize, &nTlbType);
 	err_exit(nFd <= 0, "");
 
-	pAddr = (void*)round_up((u64)__pBrkAddr + VM_RAND_START_MIN + rand_ex(VM_RAND_SIZE) * 1024ULL * 1024ULL, VM_PAGE_SIZE); 
+	pAddr = (void*)round_up((u64)__brk_addr + VM_RAND_START_MIN + rand_ex(VM_RAND_SIZE) * 1024ULL * 1024ULL, VM_PAGE_SIZE); 
 
-	__pVMSpace = (struct _VMSpace*)shmat(nFd, pAddr, SHM_RND);
-	if (__pVMSpace == (void*)-1)
+	__the_space = (struct vm_space*)shmat(nFd, pAddr, SHM_RND);
+	if (__the_space == (void*)-1)
 	{
 		shmctl(nFd, IPC_RMID, 0);
 		err_exit(1, "");
 	}
 
 #else
-	__pVMSpace = (struct _VMSpace*)VirtualAlloc(NULL, qwSize, MEM_COMMIT, PAGE_READWRITE);
-	if (!__pVMSpace)
+	__the_space = (struct vm_space*)VirtualAlloc(NULL, qwSize, MEM_COMMIT, PAGE_READWRITE);
+	if (!__the_space)
 	{
 		printf("vm create space error code: %u.", GetLastError());
 		err_exit(1, "");
 	}
 #endif
 
-	__pVMSpace->qwTag = VM_SPACE_TAG;
-	__pVMSpace->qwTotalSize = qwSize;
-	__pVMSpace->pStartAddr = __pVMSpace;
-	__pVMSpace->pEndAddr = (char*)__pVMSpace->pStartAddr + qwSize;
-	__pVMSpace->nTlbType = nTlbType;
-	__pVMSpace->nFd = nFd;
-	__pVMSpace->nChunkCount = 0;
-	__pVMSpace->bLastInitSuccess = 0;
-	__pVMSpace->pFirstChunkAddr = (char*)__pVMSpace + VM_PAGE_SIZE;
-	__pVMSpace->pNextChunkAddr = __pVMSpace->pFirstChunkAddr;
+	__the_space->qwTag = VM_SPACE_TAG;
+	__the_space->qwTotalSize = qwSize;
+	__the_space->pStartAddr = __the_space;
+	__the_space->pEndAddr = (char*)__the_space->pStartAddr + qwSize;
+	__the_space->nTlbType = nTlbType;
+	__the_space->nFd = nFd;
+	__the_space->nChunkCount = 0;
+	__the_space->bLastInitSuccess = 0;
+	__the_space->pFirstChunkAddr = (char*)__the_space + VM_PAGE_SIZE;
+	__the_space->pNextChunkAddr = __the_space->pFirstChunkAddr;
 
 	return 0;
 error_ret:
@@ -238,20 +238,20 @@ i32 vm_open_space(i32 nKey)
 #ifdef __linux__
 	i32 nRetCode = 0;
 	i32 nFd = 0, nTlbType = 0;
-	struct _VMSpace* pTmpSpace = NULL;
+	struct vm_space* pTmpSpace = NULL;
 	void* pStartAddr = NULL;
 	u64 qwSize = 0;
 	i32 bTryHugeTLB = 0;
 
-	err_exit(__pVMSpace != NULL, "");
+	err_exit(__the_space != NULL, "");
 
 	__gather_placed_vm_area();
 
-	qwSize = sizeof(struct _VMSpace);
+	qwSize = sizeof(struct vm_space);
 	nFd = __shm_get(nKey, 0, 0, &qwSize, &nTlbType);
 	err_exit(nFd <= 0, "");
 
-	pTmpSpace = (struct _VMSpace*)shmat(nFd, NULL, 0);
+	pTmpSpace = (struct vm_space*)shmat(nFd, NULL, 0);
 	err_exit(pTmpSpace == (void*)(-1), "");
 	err_exit(pTmpSpace->qwTag != VM_SPACE_TAG, "");
 
@@ -272,12 +272,12 @@ i32 vm_open_space(i32 nKey)
 	nFd = __shm_get(nKey, bTryHugeTLB, 0, &qwSize, &nTlbType);
 	err_exit(nFd <= 0, "");
 
-	__pVMSpace = (struct _VMSpace*)shmat(nFd, pStartAddr, 0);
+	__the_space = (struct vm_space*)shmat(nFd, pStartAddr, 0);
 
-	err_exit((void*)__pVMSpace != pStartAddr, "");
-	err_exit(__pVMSpace->qwTag != VM_SPACE_TAG, "");
+	err_exit((void*)__the_space != pStartAddr, "");
+	err_exit(__the_space->qwTag != VM_SPACE_TAG, "");
 
-	__pVMSpace->nFd = nFd;
+	__the_space->nFd = nFd;
 
 	return 0;
 error_ret:
@@ -293,20 +293,20 @@ void* vm_new_chunk(const char* szName, u64 qwChunkSize)
 {
 	i32 nRetCode = 0;
 	void* pChunkEndAddr = NULL;
-	struct _VMChunk* pChunk = NULL;
+	struct vm_chunk* pChunk = NULL;
 	u64 qwHashValue = 0;
 
-	err_exit(!__pVMSpace, "");
-	err_exit(!__pVMSpace->pNextChunkAddr, "");
+	err_exit(!__the_space, "");
+	err_exit(!__the_space->pNextChunkAddr, "");
 
-	qwChunkSize = round_up(qwChunkSize + sizeof(struct _VMChunk), VM_PAGE_SIZE);
-	pChunkEndAddr = (char*)__pVMSpace->pNextChunkAddr + qwChunkSize;
-	err_exit(pChunkEndAddr > __pVMSpace->pEndAddr, "");
+	qwChunkSize = round_up(qwChunkSize + sizeof(struct vm_chunk), VM_PAGE_SIZE);
+	pChunkEndAddr = (char*)__the_space->pNextChunkAddr + qwChunkSize;
+	err_exit(pChunkEndAddr > __the_space->pEndAddr, "");
 
-	pChunk = (struct _VMChunk*)__pVMSpace->pNextChunkAddr;
+	pChunk = (struct vm_chunk*)__the_space->pNextChunkAddr;
 	pChunk->RBNode.key = (void*)hash_file_name(szName);
 
-	nRetCode = rb_insert(&__pVMSpace->RBRoot, &pChunk->RBNode);
+	nRetCode = rb_insert(&__the_space->RBRoot, &pChunk->RBNode);
 	err_exit(!nRetCode, "");
 
 	pChunk->qwTag = VM_CHUNK_TAG;
@@ -314,11 +314,11 @@ void* vm_new_chunk(const char* szName, u64 qwChunkSize)
 	strncpy(pChunk->szName, szName, sizeof(pChunk->szName));
 
 //	pChunk->pChunkData = (void*)(pChunk + 1);
-	pChunk->pChunkData = move_ptr_align64(pChunk, sizeof(struct _VMChunk));
-	__pVMSpace->pNextChunkAddr = (void*)round_up((u64)pChunkEndAddr + 1, VM_PAGE_SIZE);
-	++__pVMSpace->nChunkCount;
+	pChunk->pChunkData = move_ptr_align64(pChunk, sizeof(struct vm_chunk));
+	__the_space->pNextChunkAddr = (void*)round_up((u64)pChunkEndAddr + 1, VM_PAGE_SIZE);
+	++__the_space->nChunkCount;
 
-	__pVMSpace->qwUsedSize += qwChunkSize;
+	__the_space->qwUsedSize += qwChunkSize;
 
 	return pChunk->pChunkData;
 error_ret:
@@ -330,18 +330,18 @@ void* vm_find_chunk(const char* szName)
 	i32 nRetCode = 0;
 	u64 qwHashValue = 0;
 
-	struct _VMChunk* pChunk = NULL;
+	struct vm_chunk* pChunk = NULL;
 	struct rbnode* pRBNode = NULL;
 	struct rbnode* pHot = NULL;
 
-	err_exit(!__pVMSpace, "");
+	err_exit(!__the_space, "");
 
 	qwHashValue = hash_file_name(szName);
 
-	pRBNode = rb_search((void*)qwHashValue, &__pVMSpace->RBRoot, &pHot);
+	pRBNode = rb_search((void*)qwHashValue, &__the_space->RBRoot, &pHot);
 	err_exit_silent(!pRBNode);
 
-	pChunk = (struct _VMChunk*)((u64)(pRBNode) - (u64)(&((struct _VMChunk*)(0))->RBNode));
+	pChunk = (struct vm_chunk*)((u64)(pRBNode) - (u64)(&((struct vm_chunk*)(0))->RBNode));
 	err_exit(pChunk->qwTag != VM_CHUNK_TAG, "");
 
 	return pChunk->pChunkData;
@@ -351,16 +351,16 @@ error_ret:
 
 i32 vm_destroy_space(void)
 {
-	err_exit(!__pVMSpace, "");
-	err_exit(__pVMSpace->qwTag != VM_SPACE_TAG, "");
+	err_exit(!__the_space, "");
+	err_exit(__the_space->qwTag != VM_SPACE_TAG, "");
 
 #ifdef __linux__
 
-	shmctl(__pVMSpace->nFd, IPC_RMID, 0);
-	shmdt(__pVMSpace);
-	__pVMSpace = NULL;
+	shmctl(__the_space->nFd, IPC_RMID, 0);
+	shmdt(__the_space);
+	__the_space = NULL;
 #else
-	VirtualFree((LPVOID)__pVMSpace, __pVMSpace->qwTotalSize, MEM_RELEASE);
+	VirtualFree((LPVOID)__the_space, __the_space->qwTotalSize, MEM_RELEASE);
 #endif
 
 	return 0;
@@ -370,16 +370,16 @@ error_ret:
 
 i32 vm_check_last_success(void)
 {
-	err_exit(!__pVMSpace, "");
-	return __pVMSpace->bLastInitSuccess;
+	err_exit(!__the_space, "");
+	return __the_space->bLastInitSuccess;
 error_ret:
 	return 0;
 }
 
 i32 vm_reset_last_success(void)
 {
-	err_exit(!__pVMSpace, "");
-	__pVMSpace->bLastInitSuccess = 0;
+	err_exit(!__the_space, "");
+	__the_space->bLastInitSuccess = 0;
 
 	return 1;
 error_ret:
@@ -388,8 +388,8 @@ error_ret:
 
 i32 vm_set_last_success(void)
 {
-	err_exit(!__pVMSpace, "");
-	__pVMSpace->bLastInitSuccess = 1;
+	err_exit(!__the_space, "");
+	__the_space->bLastInitSuccess = 1;
 
 	return 1;
 error_ret:
@@ -398,11 +398,11 @@ error_ret:
 
 i32 vm_mem_usage(struct VMUsage* pUsageData)
 {
-	err_exit(!__pVMSpace, "");
+	err_exit(!__the_space, "");
 
-	pUsageData->llChunkCnt = __pVMSpace->nChunkCount;
-	pUsageData->llUsedSize = __pVMSpace->qwUsedSize;
-	pUsageData->llTotalSize = __pVMSpace->qwTotalSize;
+	pUsageData->llChunkCnt = __the_space->nChunkCount;
+	pUsageData->llUsedSize = __the_space->qwUsedSize;
+	pUsageData->llTotalSize = __the_space->qwTotalSize;
 
 	return 1;
 error_ret:
