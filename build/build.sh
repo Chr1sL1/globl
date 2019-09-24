@@ -9,5 +9,5 @@ cd globl
 
 rm -rf *
 
-cmake  ..
+cmake -DCMAKE_C_COMPILER=clang ..
 make -j8

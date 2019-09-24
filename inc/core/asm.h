@@ -1,6 +1,11 @@
 #ifndef _ASM_H_
 #define _ASM_H_
 
+#define mfence	asm volatile ("mfence")
+#define lfence	asm volatile ("lfence")
+#define sfence	asm volatile ("sfence")
+#define spin_wait asm volatile ("pause")
+
 #if defined(WIN32) | defined(WIN64)
 
 #include <intrin.h>

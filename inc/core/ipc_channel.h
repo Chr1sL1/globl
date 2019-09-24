@@ -1,6 +1,8 @@
 #ifndef __ipc_channel_h__
 #define __ipc_channel_h__
 
+// multi producer(prod), single consumer(cons), lock-free ipc channel.
+
 #define MIN_MSG_SIZE_ORDER	(4)		// >= MIN_MSG_SIZE_ORDER
 #define MAX_MSG_SIZE_ORDER	(17)	// < MAX_MSG_SIZE_ORDER
 #define MSG_POOL_COUNT		(MAX_MSG_SIZE_ORDER - MIN_MSG_SIZE_ORDER)
