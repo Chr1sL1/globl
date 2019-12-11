@@ -119,7 +119,7 @@ struct co_task* co_create(co_func_t func)
 	co->_co_stack_bottom = co_stack;
 	co->_co_resume_flag = 0;
 
-	printf("co_create: %p, size: %u\n", co, sizeof(struct co_task));
+	printf("co_create: %p, size: %lu\n", co, sizeof(struct co_task));
 	return co;
 error_ret:
 	return 0;

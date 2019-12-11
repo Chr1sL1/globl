@@ -526,7 +526,7 @@ i32 pgp_check(struct pgpool* pgp)
 		rslt = lst_check(&pgpi->_flh[i]._free_list);
 		if(rslt < 0)
 		{
-			printf("!!! loop in freelist [%ld] !!!\n", i);
+			printf("!!! loop in freelist [%d] !!!\n", i);
 			return -1;
 		}
 	}

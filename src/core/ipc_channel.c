@@ -689,10 +689,10 @@ static i32 __ipc_channel_check_state(struct ipc_channel_port* local_port)
 	channel = (struct ipc_channel*)shmm_begin_addr(local_port->_shm_channel);
 	err_exit(channel->_magic_tag != IPC_CHANNEL_MAGIC, "invalid ipc channel.");
 
-	printf("cons_ptr_head: %d\n", channel->_cons_ptr_head);
-	printf("cons_ptr_tail: %d\n", channel->_cons_ptr_tail);
-	printf("prod_ptr_head: %d\n", channel->_prod_ptr_head);
-	printf("prod_ptr_tail: %d\n", channel->_prod_ptr_tail);
+	printf("cons_ptr_head: %lu\n", channel->_cons_ptr_head);
+	printf("cons_ptr_tail: %lu\n", channel->_cons_ptr_tail);
+	printf("prod_ptr_head: %lu\n", channel->_prod_ptr_head);
+	printf("prod_ptr_tail: %lu\n", channel->_prod_ptr_tail);
 
 	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) 
 	{

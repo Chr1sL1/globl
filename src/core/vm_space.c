@@ -80,7 +80,7 @@ static i32 __on_iterate_phdr(struct dl_phdr_info* info, size_t size, void* data)
 	i32 nRetCode = 0;
 	i32 nPageAreaCount = 0;
 
-	printf("loaded: %s, segments: %d, base addr: %10p", info->dlpi_name, info->dlpi_phnum, info->dlpi_addr);
+	printf("loaded: %s, segments: %d, base addr: %10lu", info->dlpi_name, info->dlpi_phnum, info->dlpi_addr);
 
 	for(i32 i = 0; i < info->dlpi_phnum; ++i)
 	{
@@ -157,7 +157,7 @@ static i32 __shm_get(i32 nKey, i32 bTryHugeTLB, i32 bCreateNew, u64* qwSize, i32
 		nFd = shmget(nKey, qwTotalSize, nShmFlag);
 		if(nFd <= 0)
 		{
-			err_exit(!bTryHugeTLB, "key: %d, qwTotalSize: %llu, errno: %d", nKey, qwTotalSize, errno);
+			err_exit(!bTryHugeTLB, "key: %d, qwTotalSize: %lu, errno: %d", nKey, qwTotalSize, errno);
 
 			if(!b1GBFailed)
 				b1GBFailed = 1;

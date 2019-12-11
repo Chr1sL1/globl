@@ -869,7 +869,7 @@ i32 mmp_check(struct mmpool* mmp)
 			dln = dln->next;
 		}
 	}
-	printf("free size: %ld:%ld\n", sum_free_size, free_list_free_size);
+	printf("free size: %d:%d\n", sum_free_size, free_list_free_size);
 
 //	for(i32 i = 0; i < FREE_LIST_COUNT; ++i)
 //	{

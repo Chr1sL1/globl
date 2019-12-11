@@ -259,7 +259,7 @@ int test_ipc_channel_multi_prod(int prod_cnt)
 		usleep(1);
 	}
 
-	printf("sent: %d, recv: %d\n", __send_cnt, __recv_cnt);
+	printf("sent: %ld, recv: %ld\n", __send_cnt, __recv_cnt);
 
 	ipc_channel_check_state_cons(cons_port);
 

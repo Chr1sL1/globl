@@ -719,7 +719,7 @@ long profile_mmpool(void)
 	printf("[max] alloc cycle: %lu, free cycle: %lu.\n", alloc_max, free_max);
 	printf("[max] alloc i: %lu, size: %lu.\n", alloc_max_i, alloc_max_size);
 	printf("[max] free i: %lu, size: %lu.\n", free_max_i, free_max_size);
-	printf("slow pct: %.2f\%\n", (float)slow_count / count * 100);
+	printf("slow pct: %.2f\n", (float)slow_count / count * 100);
 
 	mmp_destroy(pool);
 
@@ -798,7 +798,7 @@ long profile_pgpool(void)
 	printf("[max] alloc cycle: %lu, free cycle: %lu.\n", alloc_max, free_max);
 	printf("[max] alloc i: %lu, size: %lu.\n", alloc_max_i, alloc_max_size);
 	printf("[max] free i: %lu, size: %lu.\n", free_max_i, free_max_size);
-	printf("slow pct: %.2f\%\n", (float)slow_count / count * 100);
+	printf("slow pct: %.2f\n", (float)slow_count / count * 100);
 
 	pgp_destroy(pool);
 
@@ -1269,7 +1269,7 @@ void test_mm(void)
 	printf("[max] alloc cycle: %lu, free cycle: %lu.\n", alloc_max, free_max);
 	printf("[max] alloc i: %lu, size: %lu.\n", alloc_max_i, alloc_max_size);
 	printf("[max] free i: %lu, size: %lu.\n", free_max_i, free_max_size);
-	printf("slow pct: %.2f\%\n", (float)slow_count / count * 100);
+	printf("slow pct: %.2f\n", (float)slow_count / count * 100);
 
 	mm_uninitialize();
 
@@ -1609,7 +1609,7 @@ int main(void)
 
 	struct test_co_struct tcs[10];
 
-	printf("%d\n", &tcs[5] - &tcs[0]);
+	printf("%ld\n", &tcs[5] - &tcs[0]);
 
 //	getchar();
 

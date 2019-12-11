@@ -370,7 +370,7 @@ i32 net_test_server(i32 silent)
 			count_tick = __time_val;
 			if(time_diff > 0)
 			{
-				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %lu, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
+				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %d, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
 						net_session_count(net), __recv_bytes_server, __recv_bytes_client, __recv_bytes_server * 2 / time_diff, __recv_bytes_client * 2 / time_diff);
 			}
 		}
