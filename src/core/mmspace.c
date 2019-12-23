@@ -529,7 +529,7 @@ static i32 _mm_create_section(struct _mm_space_impl* mm, i32 ar_type)
 
 	err_exit(mm->_total_shmm_count >= mm->_cfg.max_shmm_count, "too much shmm section.");
 
-	shm_key = create_mmspace_key(ar_type, ++mm->_next_shmm_key, mm->_cfg.app_type, mm->_cfg.app_idx);
+	shm_key = create_vmspace_key(ar_type, ++mm->_next_shmm_key, mm->_cfg.app_type, mm->_cfg.app_idx);
 	err_exit(shm_key <= 0, "create section key failed.");
 
 	shm = shmm_create(shm_key, mm->_cfg.mm_cfg[ar_type].total_size, mm->_cfg.try_huge_page);
@@ -596,7 +596,7 @@ i32 mm_initialize(struct mm_space_config* cfg)
 
 	shm_size = sizeof(struct _mm_space_impl) + sizeof(struct _mm_shmm_save) * cfg->max_shmm_count + sizeof(struct dlist) * ZONE_HASH_SIZE;
 
-	shm_key = create_mmspace_key(0, 0, cfg->app_type, cfg->app_idx);
+	shm_key = create_vmspace_key(0, 0, cfg->app_type, cfg->app_idx);
 	err_exit(shm_key <= 0, "create mmspace key failed.");
 
 	shm = shmm_reload(shm_key);

@@ -66,7 +66,7 @@ union shm_key
 };
 #pragma pack()
 
-i32 create_mmspace_key(i32 area_type, i32 area_idx, i32 app_type, i32 app_idx)
+i32 create_vmspace_key(i32 area_type, i32 area_idx, i32 app_type, i32 app_idx)
 {
 	union shm_key key;
 	key.the_key = 0;
