@@ -14,11 +14,10 @@
 
 #define SVR_SESSION_ZONE_NAME "test_svr_session_zone"
 #define USR_TYPE_INFO (0x123123)
-#define MAX_LIVE_i32ERVAL (10000)
+#define MAX_LIVE_interVAL (10000)
 
 #define TEST_CONN_COUNT (10)
 
-static struct mmcache* __svr_session_zone = 0;
 static i32 __running = 1;
 static u64 __start_time = 0;
 static u64 __time_val = 0;
@@ -59,8 +58,8 @@ struct usr_session
 	u64 type_info;
 	u64 conn_tick;
 	u64 disconn_tick;
-	u64 live_i32erval;
-	u64 sleep_i32erval;
+	u64 live_interval;
+	u64 sleep_interval;
 };
 
 static struct usr_session __conn_session[TEST_CONN_COUNT] =
@@ -72,8 +71,8 @@ static struct usr_session __conn_session[TEST_CONN_COUNT] =
 		.type_info = USR_TYPE_INFO,
 		.conn_tick = 0,
 		.disconn_tick = 0,
-		.live_i32erval = 0,
-		.sleep_i32erval = 0,
+		.live_interval = 0,
+		.sleep_interval = 0,
 	}
 };
 
@@ -99,30 +98,12 @@ static void _signal_stop(i32 sig, siginfo_t* t, void* usr_data)
 	__running = 0;
 }
 
-static i64 _restore_zone(void)
-{
-	if(!__svr_session_zone)
-		__svr_session_zone = mm_search_zone(SVR_SESSION_ZONE_NAME);
-
-	if(__svr_session_zone && __svr_session_zone->obj_size != sizeof(struct svr_session))
-		goto error_ret;
-
-	__svr_session_zone = mm_cache_create(SVR_SESSION_ZONE_NAME, sizeof(struct svr_session), _svr_session_ctor, _svr_session_dtor);
-
-	if(!__svr_session_zone)
-		goto error_ret;
-
-	return 0;
-error_ret:
-	return -1;
-}
-
 static i32 on_acc(struct acceptor* acc, struct session* se)
 {
 	i32 rslt;
 	struct svr_session* ss;
 
-	ss = mm_cache_alloc(__svr_session_zone);
+	ss = (struct svr_session*)malloc(sizeof(struct svr_session));
 	err_exit(!ss, "on_acc alloc session failed.");
 	ss->s = se;
 	se->usr_ptr = ss;
@@ -139,8 +120,7 @@ static i32 on_server_disconn(struct session* se)
 
 	ss->s = 0;
 
-	rslt = mm_cache_free(__svr_session_zone, ss);
-	err_exit(rslt < 0, "on_disconn free session failed.");
+	free(ss);
 
 	se->usr_ptr = 0;
 
@@ -193,8 +173,8 @@ static i32 on_client_conn(struct session* se)
 
 	set_state(us, USS_RUNNING);
 	us->conn_tick = __time_val;
-	us->live_i32erval = random() % MAX_LIVE_i32ERVAL;
-	us->sleep_i32erval = random() % MAX_LIVE_i32ERVAL;
+	us->live_interval = random() % MAX_LIVE_interVAL;
+	us->sleep_interval = random() % MAX_LIVE_interVAL;
 
 //	if(us->idx < 100)
 //		printf("client session connected [%d]\n", us->idx);
@@ -256,7 +236,7 @@ static i32 run_connector(struct net_struct* net)
 	{
 		if(__conn_session[i].state == USS_DISCONNECTED)
 		{
-			if(__time_val - __conn_session[i].conn_tick < __conn_session[i].sleep_i32erval)
+			if(__time_val - __conn_session[i].conn_tick < __conn_session[i].sleep_interval)
 				continue;
 
 			__conn_session[i].idx = i;
@@ -274,7 +254,7 @@ static i32 run_connector(struct net_struct* net)
 
 		if(__conn_session[i].state == USS_RUNNING)
 		{
-			if(__time_val > __conn_session[i].conn_tick +  __conn_session[i].live_i32erval)
+			if(__time_val > __conn_session[i].conn_tick +  __conn_session[i].live_interval)
 			{
 //				if(i < 100) printf("try disconnect [%d]\n", i);
 				set_state(&__conn_session[i], USS_DISCONNECTING);
@@ -294,7 +274,7 @@ static i32 run_connector(struct net_struct* net)
 
 		if(__conn_session[i].state == USS_DISCONNECTING)
 		{
-			if(__conn_session[i].sleep_i32erval + __conn_session[i].disconn_tick + 3000 < __time_val)
+			if(__conn_session[i].sleep_interval + __conn_session[i].disconn_tick + 3000 < __time_val)
 				++pending_count;
 		}
 	}
@@ -327,9 +307,6 @@ i32 net_test_server(i32 silent)
 	sa.sa_sigaction = _signal_stop;
 	sa.sa_flags = SA_SIGINFO;
 	sigaction(SIGINT, &sa, 0);
-
-	rslt = _restore_zone();
-	err_exit(rslt < 0, "restore zone failed.");
 
 	ops.func_recv = on_server_recv;
 	ops.func_disconn = on_server_disconn;
@@ -370,8 +347,8 @@ i32 net_test_server(i32 silent)
 			count_tick = __time_val;
 			if(time_diff > 0)
 			{
-				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %d, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
-						net_session_count(net), __recv_bytes_server, __recv_bytes_client, __recv_bytes_server * 2 / time_diff, __recv_bytes_client * 2 / time_diff);
+//				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %d, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
+//						net_session_count(net), __recv_bytes_server, __recv_bytes_client, __recv_bytes_server * 2 / time_diff, __recv_bytes_client * 2 / time_diff);
 			}
 		}
 	}
