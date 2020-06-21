@@ -297,7 +297,6 @@ i32 net_test_server(i32 silent)
 
 	u64 count_tick = 0;
 
-	struct net_ops ops;
 	struct net_struct* net;
 	struct acceptor* acc;
 	FILE* fp = 0;;
@@ -308,10 +307,13 @@ i32 net_test_server(i32 silent)
 	sa.sa_flags = SA_SIGINFO;
 	sigaction(SIGINT, &sa, 0);
 
-	ops.func_recv = on_server_recv;
-	ops.func_disconn = on_server_disconn;
-	ops.func_acc = on_acc;
-	ops.func_conn = 0;
+	struct net_ops ops =
+	{
+		.func_recv = on_server_recv,
+		.func_disconn = on_server_disconn,
+		.func_acc = on_acc,
+		.func_conn = 0,
+	};
 
 	gettimeofday(&tv, 0);
 	__start_time = tv.tv_sec * 1000 + tv.tv_usec / 1000;
