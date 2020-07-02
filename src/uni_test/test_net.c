@@ -224,9 +224,9 @@ static i32 run_connector(struct net_struct* net)
 	u64 r1 = 0, r2 = 0;
 	i32 send_len;
 	i32 pending_count = 0;
-	u32 ip = inet_addr("10.85.45.212");
+	u32 ip = inet_addr("0.0.0.0");
 
-	char send_buf[net->cfg.send_buff_len];
+	char send_buf[__cfg.send_buff_len];
 
 	r1 = rdtsc();
 
@@ -262,11 +262,11 @@ static i32 run_connector(struct net_struct* net)
 
 			do
 			{
-				send_len = fill_send_data(send_buf, net->cfg.send_buff_len);
+				send_len = fill_send_data(send_buf, __cfg.send_buff_len);
 			} while(send_len <= 0);
 
 			net_send(__conn_session[i].s, send_buf, send_len);
-			__send_bytes += (net->cfg.send_buff_len - 1);
+			__send_bytes += (__cfg.send_buff_len - 1);
 			continue;
 		}
 

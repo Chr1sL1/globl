@@ -1,19 +1,7 @@
 #ifndef __net_h__
 #define __net_h__
 
-//struct acceptor 
-//{
-//	u32 local_ip;
-//	u32 local_port;
-//};
-//
-//struct session
-//{
-//	u32 remote_ip;
-//	u32 remote_port;
-//	void* usr_ptr;
-//};
-
+struct net_struct;
 struct acceptor;
 struct session;
 
@@ -22,14 +10,6 @@ typedef i32 (*on_acc_func)(struct acceptor* acc, struct session* se);
 typedef i32 (*on_conn_func)(struct session* se);
 typedef i32 (*on_disconn_func)(struct session* se);
 typedef i32 (*on_recv_func)(struct session* se, const void* buf, i32 len);
-
-//enum NET_TYPE
-//{
-//	NT_i32ERNET,
-//	NT_i32RANET,
-//
-//	NT_COUNT,
-//};
 
 struct net_config
 {
@@ -52,12 +32,6 @@ struct session_ops
 	on_conn_func func_conn;
 	on_recv_func func_recv;
 	on_disconn_func func_disconn;
-};
-
-struct net_struct 
-{
-	struct net_config cfg;
-	struct net_ops ops;
 };
 
 struct net_struct* net_create(const struct net_config* cfg, const struct net_ops* ops);

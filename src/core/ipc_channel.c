@@ -207,8 +207,7 @@ static i32 __msg_pool_create(i32 key, u32 pool_idx, const struct ipc_channel_cfg
 	p = (char*)imp + sizeof(struct ipc_msg_pool) + imp->_msg_cnt * sizeof(struct ipc_msg_free_node);
 	imp->_msg_hdr_offset = (u32)((u64)p - (u64)imp);
 
-	for(i32 i = 0; i < imp->_msg_cnt; ++i)
-	{
+	for(i32 i = 0; i < imp->_msg_cnt; ++i) {
 		imp->_free_node_list[i]._msg_idx = i;
 		imp->_free_node_list[i]._next_free_idx = (i + 1) % imp->_msg_cnt;
 
@@ -320,11 +319,9 @@ static inline i32 __ipc_close_port(struct ipc_channel_port* local_port)
 {
 	err_exit_silent(!local_port);
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i)
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) {
 		struct shmm_blk* sb = local_port->_shm_msg_pool[i];
-		if(sb)
-			shmm_close(sb);
+		if(sb) shmm_close(sb);
 	}
 
 	return 0;
@@ -355,8 +352,7 @@ i32 ipc_channel_create(const struct ipc_channel_cfg* cfg)
 	ic->_prod_ptr_tail = 0;
 	ic->_msg_queue_len = cfg->message_queue_len;
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i)
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) {
 		i32 key = create_msg_pool_key(cfg->cons_service_key.service_type, cfg->cons_service_key.service_index, i, 0);
 
 		result = __msg_pool_create(key, i, cfg);
@@ -389,8 +385,7 @@ i32 ipc_channel_load(struct ipc_service_key* cons_service_key)
 
 	ic->_cons_port = 0;
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i)
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) {
 		rslt = __msg_pool_load(ic->_key_handle[i]._key);
 		err_exit(rslt < 0, "load ipc channel message pool[%d] failed.", i);
 	}
@@ -417,8 +412,7 @@ i32 ipc_channel_destroy(struct ipc_service_key* cons_service_key)
 	ic = (struct ipc_channel*)shmm_begin_addr(sb);
 	err_exit(ic->_magic_tag != IPC_CHANNEL_MAGIC, "invalid channel.");
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i)
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) {
 		rslt = __msg_pool_destroy(ic->_key_handle[i]._key);
 		err_exit(rslt < 0, "destroy ipc channel message pool[%d] failed.", i);
 	}
@@ -447,8 +441,7 @@ static i32 __open_local_port(struct ipc_channel_port* ilp, struct ipc_service_ke
 
 	ilp->_cons_key = *cons_key;
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i)
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) {
 		struct ipc_msg_pool* imp;
 		struct shmm_blk* sb = shmm_open(channel->_key_handle[i]._key, 0);
 		err_exit(!sb, "open msg pool [%d] failed.", i);
@@ -694,17 +687,14 @@ static i32 __ipc_channel_check_state(struct ipc_channel_port* local_port)
 	printf("prod_ptr_head: %lu\n", channel->_prod_ptr_head);
 	printf("prod_ptr_tail: %lu\n", channel->_prod_ptr_tail);
 
-	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) 
-	{
+	for(i32 i = 0; i < MSG_POOL_COUNT; ++i) { 
 		i32 free_node_count = 0;
-
 		struct ipc_msg_pool* imp = __get_msg_pool(local_port, MIN_MSG_SIZE_ORDER + i);
 		err_exit(!imp, "error message pool: %d", i);
 
 		err_exit(imp->_free_node_list[imp->_free_msg_tail]._next_free_idx >= 0, "msgpool [%d]: failed to check tail node.", i);
 
-		for(i32 j = imp->_free_msg_head; j >= 0; )
-		{
+		for(i32 j = imp->_free_msg_head; j >= 0; ) {
 			++free_node_count;
 			j = imp->_free_node_list[j]._next_free_idx;
 		}
