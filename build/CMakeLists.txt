@@ -37,7 +37,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=gnu11 -Wint-to-pointer-cast -Wpointer-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++17 -Wint-to-pointer-cast -Wpointer-to-int-cast -fPIC")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -finline-functions -pthread")
 add_compile_options(-g)
-#add_compile_options(-O2)
+add_compile_options(-O2)
 
 foreach(_folder ${sub_dirs})
 	message(STATUS ">>> sub_directory: ${_folder}")
