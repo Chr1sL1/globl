@@ -1,18 +1,21 @@
 #ifndef __net_h__
 #define __net_h__
 
-struct acceptor 
-{
-	u32 local_ip;
-	u32 local_port;
-};
+//struct acceptor 
+//{
+//	u32 local_ip;
+//	u32 local_port;
+//};
+//
+//struct session
+//{
+//	u32 remote_ip;
+//	u32 remote_port;
+//	void* usr_ptr;
+//};
 
-struct session
-{
-	u32 remote_ip;
-	u32 remote_port;
-	void* usr_ptr;
-};
+struct acceptor;
+struct session;
 
 // return 0 if succeed, return -1 if any error occurs.
 typedef i32 (*on_acc_func)(struct acceptor* acc, struct session* se);
@@ -71,6 +74,10 @@ i32 net_run(struct net_struct* net, i32 timeout);
 
 i32 net_bind_session_ops(struct session* ses, const struct session_ops* ops);
 i32 net_session_count(struct net_struct* net);
+
+i32 net_set_user_ptr(struct session* ses, void* usr_ptr);
+void* net_get_user_ptr(struct session* ses);
+
 
 
 #endif

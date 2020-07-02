@@ -106,7 +106,7 @@ static i32 on_acc(struct acceptor* acc, struct session* se)
 	ss = (struct svr_session*)malloc(sizeof(struct svr_session));
 	err_exit(!ss, "on_acc alloc session failed.");
 	ss->s = se;
-	se->usr_ptr = ss;
+	net_set_user_ptr(se, ss);
 
 	return 0;
 error_ret:
@@ -116,14 +116,12 @@ error_ret:
 static i32 on_server_disconn(struct session* se)
 {
 	i32 rslt;
-	struct svr_session* ss = (struct svr_session*)se->usr_ptr;
 
+	struct svr_session* ss = (struct svr_session*)net_get_user_ptr(se);
 	ss->s = 0;
-
 	free(ss);
 
-	se->usr_ptr = 0;
-
+	net_set_user_ptr(se, 0);
 
 	return 0;
 error_ret:
@@ -160,7 +158,7 @@ static void set_state(struct usr_session* us, i32 state)
 
 static i32 on_client_conn(struct session* se)
 {
-	struct usr_session* us = (struct usr_session*)se->usr_ptr;
+	struct usr_session* us = (struct usr_session*)net_get_user_ptr(se);
 	err_exit(!us, "strange error in on_client_conn");
 
 	err_exit(us->state != USS_ESTABLISHING, "us state error.");
@@ -186,13 +184,13 @@ error_ret:
 
 static i32 on_client_disconn(struct session* se)
 {
-	struct usr_session* us = (struct usr_session*)se->usr_ptr;
+	struct usr_session* us = (struct usr_session*)net_get_user_ptr(se);
 	err_exit(!us, "strange error in on_client_disconn");
 
 	set_state(us, USS_DISCONNECTED);
 	us->s = 0;
 
-	se->usr_ptr = 0;
+	net_set_user_ptr(se, 0);
 	us->disconn_tick = __time_val;
 
 //	if(us->idx < 100)
@@ -248,7 +246,7 @@ static i32 run_connector(struct net_struct* net)
 
 			set_state(&__conn_session[i], USS_ESTABLISHING);
 			__conn_session[i].s = s;
-			s->usr_ptr = &__conn_session[i];
+			net_set_user_ptr(s, &__conn_session[i]);
 			continue;
 		}
 
