@@ -199,8 +199,7 @@ static inline i32 _write_send_buf(struct session* sei, const char* data, i32 dat
 	r_offset = sei->_r_offset;
 	w_offset = sei->_w_offset;
 
-	if(w_offset < r_offset)
-	{
+	if(w_offset < r_offset) {
 		remain = r_offset - w_offset;
 		if(remain < datalen) goto error_ret;
 
@@ -209,16 +208,13 @@ static inline i32 _write_send_buf(struct session* sei, const char* data, i32 dat
 
 		goto succ_ret;
 	}
-	else if(w_offset + datalen < r_offset + sei->_send_buf_len)
-	{
+	else if(w_offset + datalen < r_offset + sei->_send_buf_len) {
 		remain = sei->_send_buf_len - w_offset;
-		if(remain >= datalen)
-		{
+		if(remain >= datalen) {
 			memcpy(sei->_send_buf + w_offset, data, datalen);
 			w_offset += datalen;
 		}
-		else
-		{
+		else {
 			i32 remain2 = datalen - remain;
 			memcpy(sei->_send_buf + w_offset, data, remain);
 			memcpy(sei->_send_buf, data + remain, remain2);
@@ -323,8 +319,7 @@ static i32 _net_destroy(struct net_struct* inet)
 
 	dln = inet->_acc_list.head.next;
 
-	while(dln != &inet->_acc_list.tail)
-	{
+	while(dln != &inet->_acc_list.tail) {
 		struct acceptor* aci = _conv_acc_dln(dln);
 		rmv_dln = dln;
 		dln = dln->next;
@@ -335,14 +330,11 @@ static i32 _net_destroy(struct net_struct* inet)
 
 	dln = inet->_ses_list.head.next;
 
-	while(dln != &inet->_ses_list.tail)
-	{
+	while(dln != &inet->_ses_list.tail) {
 		struct session* sei = _conv_ses_dln(dln);
 		rmv_dln = dln;
 		dln = dln->next;
-
 		_net_close(sei);
-
 		lst_remove(&inet->_acc_list, rmv_dln);
 	}
 
@@ -368,7 +360,7 @@ static struct acceptor* _net_create_acc(struct net_struct* inet, u32 ip, u16 por
 	if(aci->_sock_fd < 0) goto error_ret;
 
 	sock_opt = 1;
-	rslt = setsockopt(aci->_sock_fd, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(i32));
+//	rslt = setsockopt(aci->_sock_fd, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(i32));
 	rslt = setsockopt(aci->_sock_fd, SOL_SOCKET, SO_RCVBUF, &inet->cfg.recv_buff_len, sizeof(i32));
 	rslt = setsockopt(aci->_sock_fd, SOL_SOCKET, SO_SNDBUF, &inet->cfg.send_buff_len, sizeof(i32));
 
@@ -605,8 +597,7 @@ static i32 _net_close(struct session* sei)
 	struct dlnode* dln;
 	struct net_struct* inet = sei->_inet;
 
-	if(sei->_state != _SES_INVALID && sei->_state != _SES_CLOSED)
-	{
+	if(sei->_state != _SES_INVALID && sei->_state != _SES_CLOSED) {
 		on_disconn_func df = sei->_ops.func_disconn ? sei->_ops.func_disconn : inet->ops.func_disconn;
 		if(df) (*df)(sei);
 	}
@@ -614,8 +605,7 @@ static i32 _net_close(struct session* sei)
 	rslt = lst_remove(&sei->_inet->_ses_list, &sei->_lst_node);
 	err_exit(rslt < 0, "_net_close error.");
 
-	if(sei->_sock_fd != 0)
-	{
+	if(sei->_sock_fd != 0) {
 		_internet_disconn(sei);
 
 		close(sei->_sock_fd);
@@ -642,11 +632,8 @@ static void _net_on_recv(struct session* sei)
 	struct net_struct* inet = sei->_inet;
 
 	err_exit(!sei->_recv_buf || sei->_recv_buf_len <= 0, "_net_on_recv(%d): recv buffer error <%p>", sei->_debug_type, sei);
-
 	rf = sei->_ops.func_recv ? sei->_ops.func_recv : inet->ops.func_recv;
-
-	do
-	{
+	do {
 		recv_len = recv(sei->_sock_fd, p, sei->_recv_buf_len - sei->_bytes_recv, MSG_DONTWAIT);
 		if(recv_len <= 0) break;
 
@@ -664,8 +651,7 @@ static void _net_on_recv(struct session* sei)
 	}
 	while(recv_len > 0);
 
-	if(recv_len <= 0)
-	{
+	if(recv_len <= 0) {
 		err_exit(errno != EWOULDBLOCK && errno != EAGAIN, "_net_on_recv(%d) [%d : %s], <%p>",
 				sei->_debug_type, errno, strerror(errno), sei);
 
@@ -694,24 +680,20 @@ static i32 _net_try_send_all(struct session* sei)
 	i32 remain;
 	struct net_struct* inet = sei->_inet;
 
-	if(sei->_r_offset <= sei->_w_offset)
-	{
+	if(sei->_r_offset <= sei->_w_offset) {
 send_from_start:
 		remain = sei->_w_offset - sei->_r_offset;
-		if(remain > 0)
-		{
+		if(remain > 0) {
 			cnt = send(sei->_sock_fd, sei->_send_buf + sei->_r_offset, remain, MSG_DONTWAIT);
 			if(cnt <= 0) goto send_finish;
 
 			sei->_r_offset += cnt;
 		}
 	}
-	else
-	{
+	else {
 		remain = sei->_send_buf_len - sei->_r_offset;
 
-		while(remain > 0)
-		{
+		while(remain > 0) {
 			cnt = send(sei->_sock_fd, sei->_send_buf + sei->_r_offset, remain, MSG_DONTWAIT);
 			if(cnt <= 0) goto send_finish;
 
@@ -724,18 +706,14 @@ send_from_start:
 		goto send_from_start;
 	}
 
-	if(sei->_state == _SES_CLOSING)
-	{
+	if(sei->_state == _SES_CLOSING) {
 		if(sei->_r_offset >= sei->_w_offset)
 			_net_close(sei);
 	}
-	else
-	{
+	else {
 send_finish:
-		if(cnt < 0)
-		{
+		if(cnt < 0) {
 			err_exit(errno != EWOULDBLOCK && errno != EAGAIN, "send error [%d : %s] <%p>", errno, strerror(errno), sei);
-
 		}
 	}
 
@@ -750,8 +728,7 @@ static inline void _net_on_send(struct session* sei)
 {
 	struct net_struct* inet = sei->_inet;
 
-	if(sei->_state == _SES_ESTABLISHING)
-	{
+	if(sei->_state == _SES_ESTABLISHING) {
 		on_conn_func cf;
 		cf = sei->_ops.func_conn ? sei->_ops.func_conn : inet->ops.func_conn;
 
@@ -830,15 +807,12 @@ i32 net_run(struct net_struct* inet, i32 timeout)
 	cnt = epoll_wait(inet->_epoll_fd, inet->_ep_ev, nr_fd, timeout);
 	if(cnt < 0) goto error_ret;
 
-	for(i32 i = 0; i < cnt; ++i)
-	{
+	for(i32 i = 0; i < cnt; ++i) {
 		u32 type_info = *(u32*)(inet->_ep_ev[i].data.ptr);
-		if(type_info == ACC_TYPE_INFO)
-		{
+		if(type_info == ACC_TYPE_INFO) {
 			_net_on_acc((struct acceptor*)inet->_ep_ev[i].data.ptr);
 		}
-		else if(type_info == SES_TYPE_INFO)
-		{
+		else if(type_info == SES_TYPE_INFO) {
 			sei = (struct session*)inet->_ep_ev[i].data.ptr;
 
 			if(inet->_ep_ev[i].events & EPOLLOUT)

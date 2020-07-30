@@ -21,6 +21,7 @@
 #include "core/timer.h"
 #include "core/co.h"
 #include "core/asm.h"
+#include "core/hash.h"
 
 #include "test.pb.h"
 #include "pb_encode.h"
@@ -1340,7 +1341,7 @@ error_ret:
 
 extern long net_test_server(int);
 extern int test_ipc_channel(void);
-extern int test_ipc_channel_multi_prod(int);
+extern int test_ipc_channel_multi_prod(int, int);
 
 extern void test_lua(void);
 extern void test_misc(void);
@@ -1598,6 +1599,28 @@ union shm_key
 
 #pragma pack()
 
+void test_hash(i32 count, i32 bucket_size)
+{
+	i32* result_arr = (i32*)malloc(count * sizeof(i32));
+	u64 r1 = rdtsc();
+
+	for(i32 i = 0; i < count; ++i) {
+		i32 k = random();
+		i32 hash_value = jump_consist_hash(k, bucket_size);
+		result_arr[i] = hash_value;
+//		printf("hash_value: %d\n", hash_value);
+	}
+
+	for(i32 i = 0; i < count; ++i) {
+		printf("%d,", result_arr[i]);
+	}
+
+	printf("\n");
+	printf("avg rdtsc: %d\n", (rdtsc() - r1)/count);
+
+	free(result_arr);
+}
+
 
 int main(void)
 {
@@ -1647,10 +1670,10 @@ int main(void)
 
 //	test_lua();
 
-	test_misc();
+//	test_misc();
 
 //	test_ipc_channel();
-//	test_ipc_channel_multi_prod(16);
+	test_ipc_channel_multi_prod(8, 2000);
 
 //	test_pb();
 
@@ -1710,6 +1733,7 @@ int main(void)
 //	
 //
 	printf("this seed: %lu\n", seed);
+//	test_hash(10000, 10000);
 //	test_lst();
 
 	return 0;

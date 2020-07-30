@@ -984,15 +984,15 @@ void driver5()
 }
 
 
-int test_hash()
-{
-  driver1();   /* test that the key is hashed: used for timings */
-  driver2();   /* test that whole key is hashed thoroughly */
-  driver3();   /* test that nothing but the key is hashed */
-  driver4();   /* test hashing multiple buffers (all buffers are null) */
-  driver5();   /* test the hash against known vectors */
-  return 1;
-}
+//int test_hash()
+//{
+//  driver1();   /* test that the key is hashed: used for timings */
+//  driver2();   /* test that whole key is hashed thoroughly */
+//  driver3();   /* test that nothing but the key is hashed */
+//  driver4();   /* test hashing multiple buffers (all buffers are null) */
+//  driver5();   /* test the hash against known vectors */
+//  return 1;
+//}
 
 #endif  /* SELF_TEST */
 
@@ -1083,4 +1083,18 @@ u32 hash_string(const char* pcszString)
 
 	return hashword((u32*)s_szBuffer, nIndex / 4, 0xFFEEDDCC);
 }
+
+
+i32 jump_consist_hash(u64 key, i32 num_buckets)
+{
+	i64 b = -1, j = 0;
+	while (j < num_buckets) {
+		b = j;
+		key = key * 2862933555777941757ULL + 1;
+		j = (b + 1) * ((double)(1LL << 31) / (double)((key >> 33) + 1));
+
+	}
+	return b;
+}
+
 

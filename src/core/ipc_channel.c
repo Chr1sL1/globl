@@ -21,10 +21,10 @@ struct ipc_msg_header
 	u32 _msg_size;
 	u32 _msg_idx;
 
-	unsigned _prod_service_type : SHM_SERVICE_TYPE_BITS;
-	unsigned _prod_service_index : SHM_SERVICE_INDEX_BITS;
-	unsigned _cons_service_type : SHM_SERVICE_TYPE_BITS;
-	unsigned _cons_service_index : SHM_SERVICE_INDEX_BITS;
+	unsigned _from_service_type : SHM_SERVICE_TYPE_BITS;
+	unsigned _from_service_index : SHM_SERVICE_INDEX_BITS;
+	unsigned _to_service_type : SHM_SERVICE_TYPE_BITS;
+	unsigned _to_service_index : SHM_SERVICE_INDEX_BITS;
 };
 #pragma pack()
 
@@ -134,7 +134,7 @@ static inline i32 __cas64(volatile u64* dst, u64 expected, u64 src)
 static inline struct ipc_msg_pool* __get_msg_pool(struct ipc_channel_port* port, i32 msg_size_order)
 {
 	struct ipc_msg_pool* imp;
-	err_exit(msg_size_order < MIN_MSG_SIZE_ORDER || msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid msg size order");
+	err_exit(msg_size_order < MIN_MSG_SIZE_ORDER || msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid msg size order: %d", msg_size_order);
 
 	imp = (struct ipc_msg_pool*)shmm_begin_addr(port->_shm_msg_pool[msg_size_order - MIN_MSG_SIZE_ORDER]);
 	err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid size order [%d].", msg_size_order);
@@ -173,7 +173,7 @@ static inline struct ipc_msg_header* __read_msg(struct ipc_cons_port* cons_port,
 	err_exit(msg_hdr == 0, "invalid msg_hdr.");
 
 	if(cons_port->_read_func)
-		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_prod_service_type, msg_hdr->_prod_service_index);
+		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_from_service_type, msg_hdr->_from_service_index);
 
 	return msg_hdr;
 error_ret:
@@ -303,6 +303,7 @@ static inline i32 __free_msg_sc(struct ipc_msg_pool* pool, struct ipc_msg_header
 	struct ipc_msg_header* tail_hdr;
 	u32 msg_size = (1 << pool->_msg_order);
 
+	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
 	err_exit(msg_hdr->_msg_idx >= pool->_msg_cnt, "__free_msg_sc: invalid msg_hdr.");
 	err_exit(pool->_free_node_list[msg_hdr->_msg_idx]._next_free_idx >= 0, "__free_msg_sc: invalid msg_hdr.");
 
@@ -568,7 +569,7 @@ i32 ipc_read_sc(struct ipc_cons_port* cons_port)
 	msg_node = &channel->_msg_queue_node[cons_head % channel->_msg_queue_len];
 
 	msg_pool = __get_msg_pool(&cons_port->_local_port, msg_node->_msg_size_order);
-	err_exit(msg_pool == 0, "invalid msg_pool.");
+	err_exit(msg_pool == 0, "invalid msg_pool, msg queue len: %d", channel->_msg_queue_len);
 
 	channel->_cons_ptr_head = cons_next;
 	channel->_cons_ptr_tail = cons_next;
@@ -617,10 +618,10 @@ char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, u32 size)
 	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
 	err_exit(msg_hdr->_msg_idx != free_node, "invalid free message.");
 
-	msg_hdr->_prod_service_type = prod_port->_local_service_key.service_type;
-	msg_hdr->_prod_service_index = prod_port->_local_service_key.service_index;
-	msg_hdr->_cons_service_type = prod_port->_local_port._cons_key.service_type;
-	msg_hdr->_cons_service_index = prod_port->_local_port._cons_key.service_index;
+	msg_hdr->_from_service_type = prod_port->_local_service_key.service_type;
+	msg_hdr->_from_service_index = prod_port->_local_service_key.service_index;
+	msg_hdr->_to_service_type = prod_port->_local_port._cons_key.service_type;
+	msg_hdr->_to_service_index = prod_port->_local_port._cons_key.service_index;
 	msg_hdr->_msg_size = size;
 
 	return (char*)(msg_hdr + 1);
@@ -650,7 +651,7 @@ i32 ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf)
 		prod_next = prod_head + 1;
 		cons_tail = channel->_cons_ptr_tail;
 
-		err_exit(cons_tail > prod_head, "channel full.");
+		err_exit(prod_head > cons_tail && prod_head - cons_tail > channel->_msg_queue_len, "channel full.");
 
 		spin_wait;
 

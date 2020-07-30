@@ -224,7 +224,7 @@ static i32 run_connector(struct net_struct* net)
 	u64 r1 = 0, r2 = 0;
 	i32 send_len;
 	i32 pending_count = 0;
-	u32 ip = inet_addr("0.0.0.0");
+	u32 ip = inet_addr("9.140.145.7");
 
 	char send_buf[__cfg.send_buff_len];
 
