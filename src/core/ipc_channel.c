@@ -13,6 +13,7 @@
 #define IPC_CHANNEL_MAGIC		(0x33554455)
 #define IPC_MSG_POOL_MAGIC		(0x55335544)
 #define IPC_MSG_HEADER_MAGIC	(0xfeeffeef)
+#define IPC_NODE_TAG			(0xabcdabcd)
 
 #pragma pack(1)
 struct ipc_msg_header
@@ -30,6 +31,7 @@ struct ipc_msg_header
 
 struct ipc_msg_queue_node
 {
+//	u16 _node_tag;
 	u32 _msg_size_order;
 	u32 _msg_block_idx;
 };
@@ -52,6 +54,7 @@ struct ipc_channel
 	volatile u64 _prod_ptr_tail;
 
 	struct ipc_msg_pool_key_handle _key_handle[MSG_POOL_COUNT];
+	void* _dummy;
 
 	struct ipc_msg_queue_node _msg_queue_node[0];
 };
@@ -144,6 +147,20 @@ error_ret:
 	return 0;
 }
 
+static inline struct ipc_msg_pool* __get_msg_pool_by_node(struct ipc_channel_port* port, struct ipc_msg_queue_node* msg_node)
+{
+	struct ipc_msg_pool* imp;
+	i32 order = msg_node->_msg_size_order;
+	err_exit((msg_node->_msg_size_order < MIN_MSG_SIZE_ORDER || msg_node->_msg_size_order >= MAX_MSG_SIZE_ORDER), "invalid msg size order: %d:%d", order, msg_node->_msg_size_order);
+
+	imp = (struct ipc_msg_pool*)shmm_begin_addr(port->_shm_msg_pool[msg_node->_msg_size_order - MIN_MSG_SIZE_ORDER]);
+	err_exit(imp->_magic_tag != IPC_MSG_POOL_MAGIC, "invalid size order [%d].", msg_node->_msg_size_order);
+
+	return imp;
+error_ret:
+	return 0;
+}
+
 static inline struct ipc_msg_header* __get_msg(struct ipc_msg_pool* msg_pool, u32 msg_idx)
 {
 	struct ipc_msg_header* msg_hdr;
@@ -158,26 +175,47 @@ error_ret:
 	return 0;
 }
 
-static inline struct ipc_msg_header* __read_msg(struct ipc_cons_port* cons_port, struct ipc_msg_queue_node* msg_node)
+static inline i32 __free_msg_sc(struct ipc_msg_pool* pool, struct ipc_msg_header* msg_hdr)
+{
+	u32 msg_hdr_idx = 0;
+	struct ipc_msg_header* first_hdr;
+	struct ipc_msg_header* tail_hdr;
+	u32 msg_size = (1 << pool->_msg_order);
+
+	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
+	err_exit(msg_hdr->_msg_idx >= pool->_msg_cnt, "__free_msg_sc: invalid msg_hdr.");
+//	err_exit(pool->_free_node_list[msg_hdr->_msg_idx]._next_free_idx >= 0, "__free_msg_sc: invalid msg_hdr.");
+
+	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = msg_hdr->_msg_idx;
+	pool->_free_msg_tail = msg_hdr->_msg_idx;
+	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = -1;
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+static i32 __read_msg(struct ipc_cons_port* cons_port, struct ipc_msg_queue_node* msg_node)
 {
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_pool* msg_pool;
 
-	err_exit(msg_node->_msg_size_order < MIN_MSG_SIZE_ORDER || msg_node->_msg_size_order >= MAX_MSG_SIZE_ORDER, "invalid message size.");
-
 	msg_pool = __get_msg_pool(&cons_port->_local_port, msg_node->_msg_size_order);
-	err_exit(msg_pool == 0, "invalid message pool.");
+	err_exit(msg_pool == 0, "read: invalid message pool, size_order: %d", msg_node->_msg_size_order);
 	err_exit(msg_node->_msg_block_idx >= msg_pool->_msg_cnt, "invalid message index.");
 
 	msg_hdr = __get_msg(msg_pool, msg_node->_msg_block_idx);
-	err_exit(msg_hdr == 0, "invalid msg_hdr.");
+	err_exit(msg_hdr == 0, "invalid msg_hdr, size_order: %d", msg_node->_msg_size_order);
 
 	if(cons_port->_read_func)
 		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_from_service_type, msg_hdr->_from_service_index);
 
-	return msg_hdr;
-error_ret:
+	__free_msg_sc(msg_pool, msg_hdr);
+//	msg_node->_node_tag = 0;
+
 	return 0;
+error_ret:
+	return -1;
 }
 
 static i32 __msg_pool_create(i32 key, u32 pool_idx, const struct ipc_channel_cfg* cfg)
@@ -215,7 +253,6 @@ static i32 __msg_pool_create(i32 key, u32 pool_idx, const struct ipc_channel_cfg
 
 		msg_hdr->_msg_tag = IPC_MSG_HEADER_MAGIC;
 		msg_hdr->_msg_idx = i;
-
 	}
 
 	imp->_free_node_list[imp->_free_msg_tail]._next_free_idx = -1;
@@ -280,7 +317,7 @@ static inline i32 __check_write(struct ipc_channel* channel)
 	u64 prod_head = channel->_prod_ptr_head;
 	u64 cons_tail = channel->_cons_ptr_tail;
 
-	err_exit_silent(prod_head < cons_tail);
+	err_exit_silent(prod_head >= cons_tail + channel->_msg_queue_len);
 
 	return 0;
 error_ret:
@@ -290,26 +327,6 @@ error_ret:
 static inline i32 __check_free_list(struct ipc_msg_pool* msg_pool)
 {
 	
-
-	return 0;
-error_ret:
-	return -1;
-}
-
-static inline i32 __free_msg_sc(struct ipc_msg_pool* pool, struct ipc_msg_header* msg_hdr)
-{
-	u32 msg_hdr_idx = 0;
-	struct ipc_msg_header* first_hdr;
-	struct ipc_msg_header* tail_hdr;
-	u32 msg_size = (1 << pool->_msg_order);
-
-	err_exit(msg_hdr->_msg_tag != IPC_MSG_HEADER_MAGIC, "not an allocated buf.");
-	err_exit(msg_hdr->_msg_idx >= pool->_msg_cnt, "__free_msg_sc: invalid msg_hdr.");
-	err_exit(pool->_free_node_list[msg_hdr->_msg_idx]._next_free_idx >= 0, "__free_msg_sc: invalid msg_hdr.");
-
-	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = msg_hdr->_msg_idx;
-	pool->_free_msg_tail = msg_hdr->_msg_idx;
-	pool->_free_node_list[pool->_free_msg_tail]._next_free_idx = -1;
 
 	return 0;
 error_ret:
@@ -553,7 +570,8 @@ i32 ipc_read_sc(struct ipc_cons_port* cons_port)
 	struct ipc_msg_header* msg_hdr;
 	struct ipc_msg_queue_node* msg_node;
 	struct ipc_msg_pool* msg_pool;
-	u64 cons_head, cons_next;
+	u64 cons_head, cons_next, prod_tail, prod_head;
+	i32 ret_code;
 
 	u64 rdtsc1 = rdtsc();
 
@@ -561,23 +579,24 @@ i32 ipc_read_sc(struct ipc_cons_port* cons_port)
 
 	channel = (struct ipc_channel*)shmm_begin_addr(cons_port->_local_port._shm_channel);
 	err_exit(__check_valid_channel(channel) < 0, "ipc_read_sc: invalid ipc channel.");
-	err_exit_silent(__check_read(channel) < 0);
+//	err_exit_silent(__check_read(channel) < 0);
 
 	cons_head = channel->_cons_ptr_head;
+	prod_tail = channel->_prod_ptr_tail;
+	prod_head = channel->_prod_ptr_head;
+
+//	lfence;
+
+	err_exit_silent(cons_head >= prod_tail);
+
 	cons_next = cons_head + 1;
+	channel->_cons_ptr_head = cons_next;
 
 	msg_node = &channel->_msg_queue_node[cons_head % channel->_msg_queue_len];
-
-	msg_pool = __get_msg_pool(&cons_port->_local_port, msg_node->_msg_size_order);
-	err_exit(msg_pool == 0, "invalid msg_pool, msg queue len: %d", channel->_msg_queue_len);
-
-	channel->_cons_ptr_head = cons_next;
 	channel->_cons_ptr_tail = cons_next;
 
-	msg_hdr = __read_msg(cons_port, msg_node);
-	err_exit(!msg_hdr, "ipc_read_sc: read msg failed");
-
-	__free_msg_sc(msg_pool, msg_hdr);
+	ret_code = __read_msg(cons_port, msg_node);
+	err_exit(ret_code < 0, "ipc_read_sc: read msg failed, cons_head: %lu, prod_tail: %lu, prod_head: %lu, msg_size_order: %d", cons_head, prod_tail, prod_head, msg_node->_msg_size_order);
 
 	__rdtsc_read += (rdtsc() - rdtsc1);
 
@@ -598,7 +617,7 @@ char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, u32 size)
 	err_exit(prod_port == 0, "invalid prod port.");
 
 	msg_pool = __get_msg_pool(&prod_port->_local_port, __aligned_msg_size_order(size));
-	err_exit(msg_pool == 0, "invalid pool.");
+	err_exit(msg_pool == 0, "write: invalid pool.");
 
 	do {
 		free_node = msg_pool->_free_msg_head;
@@ -651,22 +670,27 @@ i32 ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf)
 		prod_next = prod_head + 1;
 		cons_tail = channel->_cons_ptr_tail;
 
-		err_exit(prod_head > cons_tail && prod_head - cons_tail > channel->_msg_queue_len, "channel full.");
+		err_exit_silent(prod_head >= cons_tail + channel->_msg_queue_len || prod_head < cons_tail);
 
 		spin_wait;
 
 	} while(!__cas64(&channel->_prod_ptr_head, prod_head, prod_next));
 
-	while(prod_head > channel->_prod_ptr_tail)
+//	while(!__cas64(&channel->_prod_ptr_tail, prod_head, prod_next))
+//		spin_wait;
+	while(channel->_prod_ptr_tail != prod_head)
 		spin_wait;
-
-	err_exit(prod_head < channel->_prod_ptr_tail, "unknown error: prod_ptr_tail skipped me!");
-	channel->_prod_ptr_tail = prod_next;
 
 	mqn = &channel->_msg_queue_node[prod_head % channel->_msg_queue_len];
 
+//	mqn->_node_tag = IPC_NODE_TAG;
 	mqn->_msg_block_idx = msg_header->_msg_idx;
 	mqn->_msg_size_order = __aligned_msg_size_order(msg_header->_msg_size);
+//	__sync_fetch_and_add(&mqn->_msg_ref, 1);
+
+	channel->_prod_ptr_tail = prod_next;
+
+//	printf("head: %lu\n", prod_head);
 
 	return 0;
 error_ret:

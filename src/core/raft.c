@@ -16,6 +16,8 @@ struct raft_node
 
 struct raft_node* rf_create_node(i32 service_id, struct ipc_cons_port* recv_port, const struct raft_msg_sync_op* syn_op)
 {
+
+error_ret:
     return 0;
 }
 

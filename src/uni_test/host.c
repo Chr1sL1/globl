@@ -1673,7 +1673,7 @@ int main(void)
 //	test_misc();
 
 //	test_ipc_channel();
-	test_ipc_channel_multi_prod(8, 2000);
+	test_ipc_channel_multi_prod(16, 30000);
 
 //	test_pb();
 

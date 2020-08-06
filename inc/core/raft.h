@@ -40,6 +40,6 @@ void update(struct raft_node* node);
 
 i32 rf_state(struct raft_node* node);
 i32 rf_term(struct raft_node* node);
-i32 rf_reset_timeout(struct raft_node* node);
+void rf_reset_timeout(struct raft_node* node, u32 current_time);
 
 #endif

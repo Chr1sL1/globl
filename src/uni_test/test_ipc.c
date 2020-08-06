@@ -19,7 +19,7 @@ struct test_msg
 	unsigned long v4;
 	unsigned int index;
 
-	char msg[17];
+	char msg[0];
 };
 #pragma pack()
 
@@ -109,7 +109,8 @@ static int __send_msg(struct ipc_prod_port* prod_port, int count)
 	int rslt;
 
 	for(int i = 0; i < count; ++i) {
-		char* write_buf = ipc_alloc_write_buf_mp(prod_port, sizeof(struct test_msg));
+		int msg_size = random() % 100000;
+		char* write_buf = ipc_alloc_write_buf_mp(prod_port, sizeof(struct test_msg) + msg_size);
 		err_exit_silent(!write_buf);
 
 		__fill_msg(write_buf, i);
@@ -282,10 +283,11 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 	int rslt;
 	int used = 0;
 	pthread_t trds[prod_cnt];
+	int trds_join_success[prod_cnt];
 
 	struct ipc_channel_cfg cfg = {
 		.cons_service_key = __cons_key,
-		.message_queue_len = 1024,
+		.message_queue_len = 1024 * 1024 * 512,
 		.message_count[0 ... MSG_POOL_COUNT - 1] = 2048,
 	};
 
@@ -314,6 +316,8 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 	cons_port = ipc_open_cons_port(&__cons_key, __on_read_msg_ex);
 	err_exit(!cons_port, "open cons port failed.");
 
+	ipc_channel_check_state_cons(cons_port);
+
 	for(int i = 0; i < prod_cnt; ++i) {
 		cpu_set_t cs;
 		struct _test_thread_info *inf = (struct _test_thread_info *)malloc(sizeof(struct _test_thread_info));
@@ -340,6 +344,21 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 
 	__cons_running = 1;
 
+
+//	while(1) {
+//		for(i32 i = 0; i < prod_cnt; ++i) {
+//			if(pthread_join(trds[i], 0) == 0)
+//				trds_join_success[i] = 1;
+//		}
+//		for(i32 i = 0; i < prod_cnt; ++i) {
+//			if(trds_join_success[i] == 0) {
+//				continue;
+//			}
+//		}
+//		break;
+//	}
+
+
 	while(1) {
 		struct timeval tv;
 		gettimeofday(&tv, 0);
@@ -347,8 +366,9 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 		if(tv.tv_sec - __start_time > 5)
 			break;
 
-		rslt = __read_msg(cons_port, 32);
-		usleep(1);
+		rslt = __read_msg(cons_port, 64);
+//		if(rslt < 0)
+	//		break;
 	}
 
 	quick_sort(__test_arr, __capacity);
