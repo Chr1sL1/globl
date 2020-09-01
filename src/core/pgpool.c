@@ -217,7 +217,7 @@ static inline struct _pg_node* _pgn_from_payload(struct _pgpool_impl* pgpi, void
 	struct rbnode* hot;
 	struct rbnode* rbn;
 
-	rbn = rb_search(&pgpi->_pgn_tree, payload, &hot);
+	rbn = (&pgpi->_pgn_tree, payload, &hot);
 	if(!rbn) goto error_ret;
 
 	return _conv_rbn(rbn);

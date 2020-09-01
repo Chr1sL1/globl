@@ -140,9 +140,8 @@ static inline void _unlink_rbn(struct vm_page_pool* pool, struct _pg_node* pgn)
 static inline struct _pg_node* _pgn_from_payload(struct vm_page_pool* pool, void* payload)
 {
 	struct rbnode* rbn;
-	struct rbnode* hot;
 
-	rbn = rb_search(&pool->_pgn_tree, payload, &hot);
+	rbn = rb_search(&pool->_pgn_tree, payload);
 	err_exit(!rbn, "");
 
 	return _conv_rbn(rbn);

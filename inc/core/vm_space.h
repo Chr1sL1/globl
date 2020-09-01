@@ -7,6 +7,9 @@ i32 vm_open_space(i32 nKey);
 void* vm_new_chunk(const char* szName, u64 qwChunkSize);
 void* vm_find_chunk(const char* szName);
 
+void* vm_link_chunk(void* pChunk, u64 qwChunkSize);
+void* vm_next_chunk(void* pChunk);
+
 i32 vm_destroy_space(void);
 
 i32 vm_check_last_success(void);

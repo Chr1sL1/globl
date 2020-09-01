@@ -63,8 +63,9 @@ struct vm_chunk
 	u64 qwTag;
 	u64 qwChunkDataSize;
 	void* pChunkData;
+	void* pNextChunk;
 	struct rbnode RBNode;
-	char szName[VM_CHUNK_NAME_LEN];
+//	char szName[VM_CHUNK_NAME_LEN];
 };
 
 static void* __brk_addr = 0;
@@ -289,36 +290,54 @@ error_ret:
 #endif
 }
 
-void* vm_new_chunk(const char* szName, u64 qwChunkSize)
+static inline struct vm_chunk* __do_new_chunk(u64 qwChunkSize)
 {
-	i32 nRetCode = 0;
-	void* pChunkEndAddr = NULL;
-	struct vm_chunk* pChunk = NULL;
-	u64 qwHashValue = 0;
+	struct vm_chunk* pChunk;
+	void* pChunkEndAddr;
 
 	err_exit(!__the_space, "");
 	err_exit(!__the_space->pNextChunkAddr, "");
 
 	qwChunkSize = round_up(qwChunkSize + sizeof(struct vm_chunk), VM_PAGE_SIZE);
 	pChunkEndAddr = (char*)__the_space->pNextChunkAddr + qwChunkSize;
-	err_exit(pChunkEndAddr > __the_space->pEndAddr, "");
+	err_exit(pChunkEndAddr > __the_space->pEndAddr, "oom");
 
 	pChunk = (struct vm_chunk*)__the_space->pNextChunkAddr;
-	pChunk->RBNode.key = (void*)hash_file_name(szName);
-
-	nRetCode = rb_insert(&__the_space->RBRoot, &pChunk->RBNode);
-	err_exit(!nRetCode, "");
-
 	pChunk->qwTag = VM_CHUNK_TAG;
 	pChunk->qwChunkDataSize = qwChunkSize;
-	strncpy(pChunk->szName, szName, sizeof(pChunk->szName));
-
-//	pChunk->pChunkData = (void*)(pChunk + 1);
 	pChunk->pChunkData = move_ptr_align64(pChunk, sizeof(struct vm_chunk));
+	pChunk->pNextChunk = NULL;
 	__the_space->pNextChunkAddr = (void*)round_up((u64)pChunkEndAddr + 1, VM_PAGE_SIZE);
 	++__the_space->nChunkCount;
 
 	__the_space->qwUsedSize += qwChunkSize;
+
+	return pChunk;
+error_ret:
+	return NULL;
+}
+
+void* vm_new_chunk(const char* szName, u64 qwChunkSize)
+{
+	i32 nRetCode = 0;
+	u64 qwHashValue;
+	struct vm_chunk* pChunk = NULL;
+
+	err_exit(!__the_space, "");
+	err_exit(!__the_space->pNextChunkAddr, "");
+
+	qwHashValue = hash_file_name(szName);
+
+	pChunk = vm_find_chunk(szName);
+	err_exit(pChunk != NULL, "chunk exists.");
+
+	pChunk = __do_new_chunk(qwChunkSize);
+	err_exit(pChunk == NULL, "new chunk failed.");
+
+	pChunk->RBNode.key = (void*)hash_file_name(szName);
+
+	nRetCode = rb_insert(&__the_space->RBRoot, &pChunk->RBNode);
+	err_exit(!nRetCode, "");
 
 	return pChunk->pChunkData;
 error_ret:
@@ -332,13 +351,12 @@ void* vm_find_chunk(const char* szName)
 
 	struct vm_chunk* pChunk = NULL;
 	struct rbnode* pRBNode = NULL;
-	struct rbnode* pHot = NULL;
 
 	err_exit(!__the_space, "");
 
 	qwHashValue = hash_file_name(szName);
 
-	pRBNode = rb_search((void*)qwHashValue, &__the_space->RBRoot, &pHot);
+	pRBNode = rb_search((void*)qwHashValue, &__the_space->RBRoot);
 	err_exit_silent(!pRBNode);
 
 	pChunk = (struct vm_chunk*)((u64)(pRBNode) - (u64)(&((struct vm_chunk*)(0))->RBNode));
@@ -347,6 +365,38 @@ void* vm_find_chunk(const char* szName)
 	return pChunk->pChunkData;
 error_ret:
 	return NULL;
+}
+
+static inline struct vm_chunk* __get_vm_chunk(void* pInChunk)
+{
+	struct vm_chunk* pVMChunk = (struct vm_chunk*)(pInChunk - round_up(sizeof(struct vm_chunk), 64));
+	err_exit(pVMChunk->qwTag != VM_CHUNK_TAG, "invalid chunk.");
+
+	return pVMChunk;
+error_ret:
+	return NULL;
+}
+
+void* vm_link_chunk(void* pChunk, u64 qwChunkSize)
+{
+	struct vm_chunk* pRetChunk;
+	struct vm_chunk* pPrevChunk = __get_vm_chunk(pChunk);
+	err_exit_silent(pPrevChunk == NULL);
+	err_exit(pPrevChunk->pNextChunk != NULL, "chunk linked.");
+
+	pRetChunk = __do_new_chunk(qwChunkSize);
+	err_exit(pRetChunk == NULL, "new chunk failed.");
+
+	pPrevChunk->pNextChunk = pRetChunk;
+
+	return pRetChunk->pChunkData;
+error_ret:
+	return NULL;
+}
+
+void* vm_next_chunk(void* pChunk)
+{
+
 }
 
 i32 vm_destroy_space(void)

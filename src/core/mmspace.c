@@ -8,6 +8,7 @@
 #include "core/mmops.h"
 #include "core/shm_key.h"
 #include "core/hash_old.h"
+#include "core/vm_space.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -803,13 +804,13 @@ error_ret:
 i32 mm_free(void* p)
 {
 	i32 rslt;
-	struct rbnode* rbn, *hot;
+	struct rbnode* rbn;
 	struct _mm_section_impl* sec;
 	struct shmm_blk* shm;
 
 	if(!__the_mmspace) goto error_ret;
 
-	rbn = rb_search(&__the_mmspace->_all_section_tree, p, &hot);
+	rbn = rb_search(&__the_mmspace->_all_section_tree, p);
 	if(!rbn) goto error_ret;
 
 	shm = _conv_shmm_from_rbn(rbn);

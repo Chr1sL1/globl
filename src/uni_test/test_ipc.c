@@ -287,7 +287,7 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 
 	struct ipc_channel_cfg cfg = {
 		.cons_service_key = __cons_key,
-		.message_queue_len = 1024 * 1024 * 512,
+		.message_queue_len = 1024 * 1024,
 		.message_count[0 ... MSG_POOL_COUNT - 1] = 2048,
 	};
 
