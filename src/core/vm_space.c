@@ -65,7 +65,6 @@ struct vm_chunk
 	void* pChunkData;
 	void* pNextChunk;
 	struct rbnode RBNode;
-//	char szName[VM_CHUNK_NAME_LEN];
 };
 
 static void* __brk_addr = 0;
@@ -323,7 +322,7 @@ void* vm_new_chunk(const char* szName, u64 qwChunkSize)
 	u64 qwHashValue;
 	struct vm_chunk* pChunk = NULL;
 
-	err_exit(!__the_space, "");
+	err_exit(!__the_space, "vm space not initialized.");
 	err_exit(!__the_space->pNextChunkAddr, "");
 
 	qwHashValue = hash_file_name(szName);
@@ -394,9 +393,17 @@ error_ret:
 	return NULL;
 }
 
-void* vm_next_chunk(void* pChunk)
+void* vm_next_chunk(void* pInChunk)
 {
+	struct vm_chunk* pChunk;
+	err_exit_silent(pInChunk == NULL);
 
+	pChunk = __get_vm_chunk(pInChunk);
+	err_exit_silent(pChunk == NULL);
+
+	return pChunk->pChunkData;
+error_ret:
+	return NULL;
 }
 
 i32 vm_destroy_space(void)

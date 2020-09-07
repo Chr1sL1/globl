@@ -1,5 +1,5 @@
 #include "common_types.h"
-#include "core/pgpool.h"
+#include "core/page_alloc.h"
 #include "core/mmops.h"
 #include "core/dlist.h"
 #include "core/misc.h"

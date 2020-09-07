@@ -13,7 +13,7 @@
 #include "core/common.h"
 #include "core/misc.h"
 #include "core/mmpool.h"
-#include "core/pgpool.h"
+#include "core/page_alloc.h"
 #include "core/ringbuf.h"
 #include "core/ipc.h"
 #include "core/mmspace.h"
