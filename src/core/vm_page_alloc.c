@@ -1,7 +1,7 @@
 #include "common_types.h"
 #include "core/dlist.h"
 #include "core/rbtree.h"
-#include "core/vm_page_pool.h"
+#include "core/vm_page_alloc.h"
 #include "core/misc.h"
 #include "core/asm.h"
 #include <stdio.h>
@@ -37,7 +37,7 @@ struct _pgp_cfg
 	u64 page_size_order;
 };
 
-struct vm_page_pool
+struct vm_page_alloc
 {
 	u64 _chunck_label;
 	struct _pgp_cfg _cfg;
@@ -88,7 +88,7 @@ static inline u64 _get_page_size(u64 page_size_order)
 	return 1ULL << page_size_order;
 }
 
-static inline struct _pg_node* _fetch_free_pgn(struct vm_page_pool* pool)
+static inline struct _pg_node* _fetch_free_pgn(struct vm_page_alloc* pool)
 {
 	struct dlnode* dln = lst_pop_front(&pool->_free_pgn_list);
 	struct _pg_node* pgn = _conv_free_pgn(dln);
@@ -96,12 +96,12 @@ static inline struct _pg_node* _fetch_free_pgn(struct vm_page_pool* pool)
 	return pgn;
 }
 
-static inline i32 _return_free_pgn(struct vm_page_pool* pool, struct _pg_node* pgn)
+static inline i32 _return_free_pgn(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	return lst_push_front(&pool->_free_pgn_list, &pgn->_free_pgn_node);
 }
 
-static inline struct _pg_node* _fetch_fln(struct vm_page_pool* pool, u64 flh_idx)
+static inline struct _pg_node* _fetch_fln(struct vm_page_alloc* pool, u64 flh_idx)
 {
 	struct _pg_node* pgn;
 	struct dlnode* fln = lst_pop_front(&pool->_free_list[flh_idx]);
@@ -110,7 +110,7 @@ static inline struct _pg_node* _fetch_fln(struct vm_page_pool* pool, u64 flh_idx
 	return pgn;
 }
 
-static inline i32 _link_fln(struct vm_page_pool* pool, struct _pg_node* pgn)
+static inline i32 _link_fln(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	u64 flh_idx = log_2(pgn->_pg_count);
 
@@ -119,25 +119,25 @@ static inline i32 _link_fln(struct vm_page_pool* pool, struct _pg_node* pgn)
 	return lst_push_front(&pool->_free_list[flh_idx], &pgn->_fln_node);
 }
 
-static inline i32 _unlink_fln(struct vm_page_pool* pool, struct _pg_node* pgn)
+static inline i32 _unlink_fln(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	u64 flh_idx = log_2(pgn->_pg_count);
 
 	return lst_remove(&pool->_free_list[flh_idx], &pgn->_fln_node);
 }
 
-static inline i32 _link_rbn(struct vm_page_pool* pool, struct _pg_node* pgn)
+static inline i32 _link_rbn(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	pgn->_rb_node.key = _get_payload(pgn);
 	return rb_insert(&pool->_pgn_tree, &pgn->_rb_node);
 }
 
-static inline void _unlink_rbn(struct vm_page_pool* pool, struct _pg_node* pgn)
+static inline void _unlink_rbn(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	rb_remove_node(&pool->_pgn_tree, &pgn->_rb_node);
 }
 
-static inline struct _pg_node* _pgn_from_payload(struct vm_page_pool* pool, void* payload)
+static inline struct _pg_node* _pgn_from_payload(struct vm_page_alloc* pool, void* payload)
 {
 	struct rbnode* rbn;
 
@@ -149,7 +149,7 @@ error_ret:
 	return NULL;
 }
 
-static i32 _take_free_node(struct vm_page_pool* pool, u64 pg_count, struct _pg_node** pgn)
+static i32 _take_free_node(struct vm_page_alloc* pool, u64 pg_count, struct _pg_node** pgn)
 {
 	u64 flh_idx = log_2(pg_count);
 	u64 idx = flh_idx;
@@ -210,7 +210,7 @@ error_ret:
 	return -1;
 }
 
-static inline i32 _merge_free_node(struct vm_page_pool* pool, struct _pg_node* prev, struct _pg_node* next)
+static inline i32 _merge_free_node(struct vm_page_alloc* pool, struct _pg_node* prev, struct _pg_node* next)
 {
 	err_exit((char*)_get_payload(next) != (char*)_get_payload(prev) + prev->_pg_count * _get_page_size(pool->_cfg.page_size_order), "");
 
@@ -226,7 +226,7 @@ error_ret:
 	return -1;
 }
 
-static i32 _return_free_node(struct vm_page_pool* pool, struct _pg_node* pgn)
+static i32 _return_free_node(struct vm_page_alloc* pool, struct _pg_node* pgn)
 {
 	i32 rslt = 0;
 	struct rbnode* succ;
@@ -248,17 +248,17 @@ static i32 _return_free_node(struct vm_page_pool* pool, struct _pg_node* pgn)
 	return 0;
 }
 
-static struct vm_page_pool* _pgp_init_chunk(void* addr, u64 size, u64 max_page_count_alloc, u64 pg_size_order)
+static struct vm_page_alloc* _pgp_init_chunk(void* addr, u64 size, u64 max_page_count_alloc, u64 pg_size_order)
 {
-	struct vm_page_pool* pool;
+	struct vm_page_alloc* pool;
 	i64 remain_count;
 	u64 chunk_pg_count;
 	void* pg;
 	void* cur_offset = addr;
 	u64 pg_size = _get_page_size(pg_size_order);
 
-	pool = (struct vm_page_pool*)cur_offset;
-	cur_offset = move_ptr_align64(cur_offset, sizeof(struct vm_page_pool));
+	pool = (struct vm_page_alloc*)cur_offset;
+	cur_offset = move_ptr_align64(cur_offset, sizeof(struct vm_page_alloc));
 
 	pool->_chunck_label = PGP_CHUNK_LABEL;
 	pool->addr_begin = addr;
@@ -323,13 +323,13 @@ static struct vm_page_pool* _pgp_init_chunk(void* addr, u64 size, u64 max_page_c
 	return pool;
 }
 
-static struct vm_page_pool* _pgp_load_chunk(void* addr)
+static struct vm_page_alloc* _pgp_load_chunk(void* addr)
 {
 	void* cur_offset;
-	struct vm_page_pool* pool;
+	struct vm_page_alloc* pool;
 
-	pool = (struct vm_page_pool*)addr;
-	cur_offset = move_ptr_align64(addr, sizeof(struct vm_page_pool));
+	pool = (struct vm_page_alloc*)addr;
+	cur_offset = move_ptr_align64(addr, sizeof(struct vm_page_alloc));
 
 	err_exit(pool->_chunck_label != PGP_CHUNK_LABEL, "");
 	err_exit(pool->addr_begin != pool || addr >= pool->addr_end, "");
@@ -339,13 +339,13 @@ error_ret:
 	return 0;
 }
 
-struct vm_page_pool* vpp_create(void* addr, u64 total_size, u64 page_size_k, u64 max_page_count_alloc)
+struct vm_page_alloc* vpp_create(void* addr, u64 total_size, u64 page_size_k, u64 max_page_count_alloc)
 {
-	struct vm_page_pool* pool = NULL;
+	struct vm_page_alloc* pool = NULL;
 	u64 page_size = page_size_k * 1024;
 
 	err_exit(!addr || ((u64)addr & 7) != 0 || total_size <= page_size, "");
-	err_exit(total_size <= sizeof(struct vm_page_pool), "");
+	err_exit(total_size <= sizeof(struct vm_page_alloc), "");
 
 	pool = _pgp_init_chunk(addr, total_size, max_page_count_alloc, log_2(page_size));
 	err_exit(!pool, "");
@@ -358,9 +358,9 @@ error_ret:
 	return 0;
 }
 
-struct vm_page_pool* vpp_load(void* addr)
+struct vm_page_alloc* vpp_load(void* addr)
 {
-	struct vm_page_pool* pool;
+	struct vm_page_alloc* pool;
 
 	err_exit(!addr || ((u64)addr & 7) != 0, "");
 
@@ -375,7 +375,7 @@ error_ret:
 	return 0;
 }
 
-void vpp_destroy(struct vm_page_pool* pool)
+void vpp_destroy(struct vm_page_alloc* pool)
 {
 	if(pool && pool->_chunck_label == PGP_CHUNK_LABEL)
 	{
@@ -384,7 +384,7 @@ void vpp_destroy(struct vm_page_pool* pool)
 }
 
 
-void* vpp_alloc(struct vm_page_pool* pool, u64 size)
+void* vpp_alloc(struct vm_page_alloc* pool, u64 size)
 {
 	void* payload;
 	u64 pg_count;
@@ -406,12 +406,12 @@ error_ret:
 	return 0;
 }
 
-void* vpp_alloc_page(struct vm_page_pool* pool)
+void* vpp_alloc_page(struct vm_page_alloc* pool)
 {
 	return vpp_alloc(pool, 1);
 }
 
-void* vpp_realloc(struct vm_page_pool* pool, void* payload, u64 size)
+void* vpp_realloc(struct vm_page_alloc* pool, void* payload, u64 size)
 {
 	i32 rslt;
 	struct _pg_node* pgn;
@@ -441,12 +441,12 @@ error_ret:
 	return 0;
 }
 
-void* vpp_get_page(struct vm_page_pool* pool, void* ptr)
+void* vpp_get_page(struct vm_page_alloc* pool, void* ptr)
 {
 	return NULL;
 }
 
-int vpp_free(struct vm_page_pool* pool, void* payload)
+i32 vpp_free(struct vm_page_alloc* pool, void* payload)
 {
 	i32 rslt;
 	struct _pg_node* pgn;
@@ -467,7 +467,7 @@ error_ret:
 	return -1;
 }
 
-i32 vpp_check(struct vm_page_pool* pgp)
+i32 vpp_check(struct vm_page_alloc* pgp)
 {
 	i32 rslt = 0;
 //	struct _pgpool_impl* pool = _conv_impl(pgp);

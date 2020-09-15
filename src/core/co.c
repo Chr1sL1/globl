@@ -2,12 +2,13 @@
 
 #include "common_types.h"
 #include "core/co.h"
-#include "core/mmspace.h"
 #include "core/misc.h"
 #include "core/asm.h"
+#include "core/vm_stack_alloc.h"
 
 #define CO_MAGIC_NUM	(0x6677667788558855)
 #define CO_ZONE_NAME	"sys_co_zone"
+#define CO_ALLOCATOR_NAME	"core_co_allocator"
 
 #define SAVE_CONTEXT
 
@@ -54,7 +55,27 @@ struct co_task
 	struct slnode _list_node;
 } __cache_aligned__;
 
+struct vm_stack_allocator* __co_stack_allocator = NULL;
 
+i32 co_module_load(u32 cocurrent_stack_cnt, u32 stack_frame_size)
+{
+	__co_stack_allocator = stack_allocator_load(CO_ALLOCATOR_NAME);
+	if(!__co_stack_allocator)
+		__co_stack_allocator = stack_allocator_create(CO_ALLOCATOR_NAME, cocurrent_stack_cnt, stack_frame_size);
+
+	err_exit(!__co_stack_allocator, "co module load failed.");
+	return 0;
+error_ret:
+	return -1;
+}
+
+void co_module_unload(void)
+{
+	if(__co_stack_allocator)
+		stack_allocator_destroy(__co_stack_allocator);
+
+	return;
+}
 
 /*************************************************
  *			memory layout:
@@ -101,15 +122,15 @@ struct co_task* co_create(co_func_t func)
 {
 	i32 rslt;
 	void* co_stack;
-	i32 stack_size;
+	u64 stack_size;
 	struct co_task* co;
 
 	err_exit(!func, "co_create: invalid func.");
 
-	co_stack = mm_area_alloc(0, MM_AREA_STACK);
+	co_stack = stack_allocator_alloc(__co_stack_allocator, &stack_size);
 	err_exit(!co_stack, "co_create: alloc stack failed.");
 
-	stack_size = round_down(mm_get_cfg()->mm_cfg[MM_AREA_STACK].stk_frm_size - 16, 16);
+	stack_size = round_down(stack_size - 16, 16);
 	co = (struct co_task*)(co_stack + stack_size - sizeof(struct co_task));
 	co = move_ptr_align64(co, 0) - cache_line_size;
 
@@ -131,7 +152,7 @@ void co_destroy(struct co_task* co)
 	err_exit(!coi, "co_destroy: invalid param");
 
 	if(coi->_co_stack_bottom)
-		mm_free(coi->_co_stack_bottom);
+		stack_allocator_free(__co_stack_allocator, coi->_co_stack_bottom);
 
 error_ret:
 	return;

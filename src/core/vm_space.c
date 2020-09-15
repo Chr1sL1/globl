@@ -4,6 +4,8 @@
 #include "core/hash.h"
 #include "core/misc.h"
 #include "core/asm.h"
+#include "core/vm_page_alloc.h"
+#include "core/vm_slab_alloc.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -38,9 +40,18 @@
 
 #define VM_RAND_START_MIN		(128ULL * 1024 * 1024 * 1024)
 #define VM_RAND_SIZE			(16 * 1024)   // MB
+#define VM_CHUNK_CNT_LIMIT	(256)
+
+#define VM_COMMON_ALLOCATOR_NAME	"core_common_allocator"
 
 struct vm_space;
-struct vm_chunk;
+
+struct vm_chunk
+{
+	void* chunk_data;
+	u64 data_size;
+	struct rbnode rb_node;
+};
 
 struct vm_space
 {
@@ -49,28 +60,27 @@ struct vm_space
 	void* pEndAddr;
 	u64 qwTotalSize;
 	u64 qwUsedSize;
-	i32 nChunkCount;
 	i32 nTlbType;
 	i32 nFd;
 	i32 bLastInitSuccess;
-	void* pFirstChunkAddr;
-	void* pNextChunkAddr;
-	struct rbtree RBRoot;
+	i32 nNextChunkIdx;
+	void* real_addr;
+	struct rbtree rb_root;
+	struct vm_page_alloc* page_pool;
+	struct vm_slab_allocator* slab_allocator;
+	struct vm_chunk chunk_record[VM_CHUNK_CNT_LIMIT];
 };
 
-struct vm_chunk
-{
-	u64 qwTag;
-	u64 qwChunkDataSize;
-	void* pChunkData;
-	void* pNextChunk;
-	struct rbnode RBNode;
-};
 
 static void* __brk_addr = 0;
 static u64 __min_so_addr = (u64)-1LL;
 static u64 __max_so_addr = 0LL;
 static struct vm_space* __the_space = NULL;
+
+static inline struct vm_chunk* __get_chunk_by_rbnode(struct rbnode* rbn)
+{
+	return (struct vm_chunk*)((u64)rbn - (u64)&(((struct vm_chunk*)(0))->rb_node));
+}
 
 #ifdef __linux__
 
@@ -177,7 +187,7 @@ error_ret:
 }
 #endif
 
-i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB)
+i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB, i32 nLogicPageSizeK, i32 nMaxPageCntPerAlloc)
 {
 	i32 nRetCode = 0;
 	i32 nFd = 0, nTlbType = 0;
@@ -185,7 +195,7 @@ i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB)
 
 	err_exit(__the_space != NULL, "");
 
-	qwSize = round_up(qwSize + sizeof(struct vm_space), VM_PAGE_SIZE);
+	qwSize = round_up(qwSize, VM_PAGE_SIZE) + round_up(sizeof(struct vm_space), VM_PAGE_SIZE);
 
 #ifdef __linux__
 
@@ -223,10 +233,14 @@ i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB)
 	__the_space->pEndAddr = (char*)__the_space->pStartAddr + qwSize;
 	__the_space->nTlbType = nTlbType;
 	__the_space->nFd = nFd;
-	__the_space->nChunkCount = 0;
 	__the_space->bLastInitSuccess = 0;
-	__the_space->pFirstChunkAddr = (char*)__the_space + VM_PAGE_SIZE;
-	__the_space->pNextChunkAddr = __the_space->pFirstChunkAddr;
+	__the_space->real_addr = (char*)__the_space + round_up(sizeof(struct vm_space), VM_PAGE_SIZE);
+	rb_init(&__the_space->rb_root, 0);
+
+	__the_space->page_pool = vpp_create(__the_space->real_addr, __the_space->qwTotalSize, nLogicPageSizeK, nMaxPageCntPerAlloc);
+	err_exit(!__the_space->page_pool, "init page pool failed.");
+
+	memset(__the_space->chunk_record, 0, sizeof(__the_space->chunk_record));
 
 	return 0;
 error_ret:
@@ -279,6 +293,9 @@ i32 vm_open_space(i32 nKey)
 
 	__the_space->nFd = nFd;
 
+	__the_space->page_pool = vpp_load(__the_space->page_pool);
+	err_exit_silent(!__the_space->page_pool);
+
 	return 0;
 error_ret:
 	if(pTmpSpace)
@@ -287,123 +304,6 @@ error_ret:
 #else
 	return -1;
 #endif
-}
-
-static inline struct vm_chunk* __do_new_chunk(u64 qwChunkSize)
-{
-	struct vm_chunk* pChunk;
-	void* pChunkEndAddr;
-
-	err_exit(!__the_space, "");
-	err_exit(!__the_space->pNextChunkAddr, "");
-
-	qwChunkSize = round_up(qwChunkSize + sizeof(struct vm_chunk), VM_PAGE_SIZE);
-	pChunkEndAddr = (char*)__the_space->pNextChunkAddr + qwChunkSize;
-	err_exit(pChunkEndAddr > __the_space->pEndAddr, "oom");
-
-	pChunk = (struct vm_chunk*)__the_space->pNextChunkAddr;
-	pChunk->qwTag = VM_CHUNK_TAG;
-	pChunk->qwChunkDataSize = qwChunkSize;
-	pChunk->pChunkData = move_ptr_align64(pChunk, sizeof(struct vm_chunk));
-	pChunk->pNextChunk = NULL;
-	__the_space->pNextChunkAddr = (void*)round_up((u64)pChunkEndAddr + 1, VM_PAGE_SIZE);
-	++__the_space->nChunkCount;
-
-	__the_space->qwUsedSize += qwChunkSize;
-
-	return pChunk;
-error_ret:
-	return NULL;
-}
-
-void* vm_new_chunk(const char* szName, u64 qwChunkSize)
-{
-	i32 nRetCode = 0;
-	u64 qwHashValue;
-	struct vm_chunk* pChunk = NULL;
-
-	err_exit(!__the_space, "vm space not initialized.");
-	err_exit(!__the_space->pNextChunkAddr, "");
-
-	qwHashValue = hash_file_name(szName);
-
-	pChunk = vm_find_chunk(szName);
-	err_exit(pChunk != NULL, "chunk exists.");
-
-	pChunk = __do_new_chunk(qwChunkSize);
-	err_exit(pChunk == NULL, "new chunk failed.");
-
-	pChunk->RBNode.key = (void*)hash_file_name(szName);
-
-	nRetCode = rb_insert(&__the_space->RBRoot, &pChunk->RBNode);
-	err_exit(!nRetCode, "");
-
-	return pChunk->pChunkData;
-error_ret:
-	return NULL;
-}
-
-void* vm_find_chunk(const char* szName)
-{
-	i32 nRetCode = 0;
-	u64 qwHashValue = 0;
-
-	struct vm_chunk* pChunk = NULL;
-	struct rbnode* pRBNode = NULL;
-
-	err_exit(!__the_space, "");
-
-	qwHashValue = hash_file_name(szName);
-
-	pRBNode = rb_search((void*)qwHashValue, &__the_space->RBRoot);
-	err_exit_silent(!pRBNode);
-
-	pChunk = (struct vm_chunk*)((u64)(pRBNode) - (u64)(&((struct vm_chunk*)(0))->RBNode));
-	err_exit(pChunk->qwTag != VM_CHUNK_TAG, "");
-
-	return pChunk->pChunkData;
-error_ret:
-	return NULL;
-}
-
-static inline struct vm_chunk* __get_vm_chunk(void* pInChunk)
-{
-	struct vm_chunk* pVMChunk = (struct vm_chunk*)(pInChunk - round_up(sizeof(struct vm_chunk), 64));
-	err_exit(pVMChunk->qwTag != VM_CHUNK_TAG, "invalid chunk.");
-
-	return pVMChunk;
-error_ret:
-	return NULL;
-}
-
-void* vm_link_chunk(void* pChunk, u64 qwChunkSize)
-{
-	struct vm_chunk* pRetChunk;
-	struct vm_chunk* pPrevChunk = __get_vm_chunk(pChunk);
-	err_exit_silent(pPrevChunk == NULL);
-	err_exit(pPrevChunk->pNextChunk != NULL, "chunk linked.");
-
-	pRetChunk = __do_new_chunk(qwChunkSize);
-	err_exit(pRetChunk == NULL, "new chunk failed.");
-
-	pPrevChunk->pNextChunk = pRetChunk;
-
-	return pRetChunk->pChunkData;
-error_ret:
-	return NULL;
-}
-
-void* vm_next_chunk(void* pInChunk)
-{
-	struct vm_chunk* pChunk;
-	err_exit_silent(pInChunk == NULL);
-
-	pChunk = __get_vm_chunk(pInChunk);
-	err_exit_silent(pChunk == NULL);
-
-	return pChunk->pChunkData;
-error_ret:
-	return NULL;
 }
 
 i32 vm_destroy_space(void)
@@ -423,6 +323,163 @@ i32 vm_destroy_space(void)
 	return 0;
 error_ret:
 	return -1;
+}
+
+static i32 __find_valid_chunk_pos(void)
+{
+	for(i32 i = __the_space->nNextChunkIdx; i < VM_CHUNK_CNT_LIMIT; ++i)
+	{
+		if(__the_space->chunk_record[i].chunk_data == NULL && __the_space->chunk_record[i].data_size == 0)
+			return i;
+	}
+
+	return -1;
+}
+
+void* vm_new_chunk(const char* name, u64 chunk_size)
+{
+	i32 result;
+	u64 name_hash;
+	struct vm_chunk* new_chunk;
+
+	err_exit(!__the_space, "");
+	err_exit(__the_space->qwTag != VM_SPACE_TAG, "");
+	err_exit(__the_space->nNextChunkIdx >= VM_CHUNK_CNT_LIMIT, "no more chunks");
+	err_exit(__the_space->chunk_record[__the_space->nNextChunkIdx].chunk_data != NULL || __the_space->chunk_record[__the_space->nNextChunkIdx].data_size != 0, "invalid free chunk.");
+
+	name_hash = hash_string(name);
+	new_chunk = &__the_space->chunk_record[__the_space->nNextChunkIdx];
+
+	rb_fillnew(&new_chunk->rb_node);
+	new_chunk->rb_node.key = (void*)name_hash;
+
+	result = rb_insert(&__the_space->rb_root, &new_chunk->rb_node);
+	err_exit(result < 0, "rb_insert failed.");
+
+	new_chunk->chunk_data = vpp_alloc(__the_space->page_pool, chunk_size);
+	err_exit(new_chunk->chunk_data == 0, "vpp_alloc chunk data failed.");
+
+	new_chunk->data_size = chunk_size;
+	__the_space->nNextChunkIdx = __find_valid_chunk_pos();
+
+	return new_chunk->chunk_data;
+
+error_ret:
+	rb_remove_node(&__the_space->rb_root, &new_chunk->rb_node);
+	return NULL;
+}
+
+static inline struct vm_chunk* __find_vm_chunk_by_hash(u64 name_hash)
+{
+	struct rbnode* node = rb_search(&__the_space->rb_root, (void*)name_hash);
+	return __get_chunk_by_rbnode(node);
+}
+
+static struct vm_chunk* __find_vm_chunk(const char* name)
+{
+	struct rbnode* node;
+	u64 name_hash;
+	err_exit(!__the_space, "");
+	err_exit(__the_space->qwTag != VM_SPACE_TAG, "");
+
+	name_hash = hash_string(name);
+
+	return __find_vm_chunk_by_hash(name_hash);
+error_ret:
+	return NULL;
+}
+
+void* vm_find_chunk(const char* name)
+{
+	struct vm_chunk* chunk = __find_vm_chunk(name);
+	err_exit_silent(!chunk);
+
+	return chunk->chunk_data;
+error_ret:
+	return NULL;
+}
+
+i32 vm_del_chunk(const char* name)
+{
+	u64 name_hash;
+	struct vm_chunk* chunk;
+	err_exit(!__the_space, "");
+	err_exit(__the_space->qwTag != VM_SPACE_TAG, "");
+
+	name_hash = hash_string(name);
+
+	chunk = __find_vm_chunk_by_hash(name_hash);
+	err_exit(!chunk, "can not find chunk name %s", name);
+
+	vpp_free(__the_space->page_pool, chunk->chunk_data);
+	rb_remove(&__the_space->rb_root, (void*)name_hash);
+
+	chunk->chunk_data = NULL;
+	chunk->data_size = 0;
+
+	__the_space->nNextChunkIdx = chunk - __the_space->chunk_record;
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+void* vm_alloc_page(u64 require_size)
+{
+	err_exit_silent(!__the_space);
+	err_exit_silent(__the_space->qwTag != VM_SPACE_TAG);
+	err_exit(!__the_space->page_pool, "invalid page pool");
+
+	return vpp_alloc(__the_space->page_pool, require_size);
+error_ret:
+	return NULL;
+}
+
+i32 vm_free_page(void* page)
+{
+	err_exit_silent(!__the_space);
+	err_exit_silent(__the_space->qwTag != VM_SPACE_TAG);
+	err_exit(!__the_space->page_pool, "invalid page pool");
+
+	return vpp_free(__the_space->page_pool, page);
+error_ret:
+	return -1;
+}
+
+i32 vm_create_common_allocator(u32 min_obj_size, u32 max_obj_size, u32 init_obj_cnt)
+{
+	err_exit_silent(!__the_space);
+	err_exit_silent(__the_space->qwTag != VM_SPACE_TAG);
+	err_exit(__the_space->slab_allocator, "common allocator exists.");
+
+	__the_space->slab_allocator = vsa_create(VM_COMMON_ALLOCATOR_NAME, min_obj_size, max_obj_size, init_obj_cnt, 3);
+	err_exit(!__the_space->slab_allocator, "create common allocator failed.");
+
+	return 0;
+error_ret:
+	return -1;
+}
+
+void* vm_common_alloc(u32 obj_size)
+{
+	err_exit_silent(!__the_space);
+	err_exit_silent(__the_space->qwTag != VM_SPACE_TAG);
+	err_exit(!__the_space->slab_allocator, "invalid common allocator.");
+
+	return vsa_alloc(__the_space->slab_allocator, obj_size);
+error_ret:
+	return NULL;
+}
+
+void vm_common_free(void* obj)
+{
+	err_exit_silent(!__the_space);
+	err_exit_silent(__the_space->qwTag != VM_SPACE_TAG);
+	err_exit(!__the_space->slab_allocator, "invalid common allocator.");
+
+	vsa_free(__the_space->slab_allocator, obj);
+error_ret:
+	return;
 }
 
 i32 vm_check_last_success(void)
@@ -457,7 +514,6 @@ i32 vm_mem_usage(struct VMUsage* pUsageData)
 {
 	err_exit(!__the_space, "");
 
-	pUsageData->llChunkCnt = __the_space->nChunkCount;
 	pUsageData->llUsedSize = __the_space->qwUsedSize;
 	pUsageData->llTotalSize = __the_space->qwTotalSize;
 

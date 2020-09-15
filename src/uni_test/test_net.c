@@ -1,6 +1,5 @@
 #include "common_types.h"
 #include "core/net.h"
-#include "core/mmspace.h"
 #include "core/misc.h"
 #include "core/asm.h"
 
