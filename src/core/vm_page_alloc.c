@@ -360,7 +360,7 @@ error_ret:
 
 struct vm_page_alloc* vpp_load(void* addr)
 {
-	struct vm_page_alloc* pool;
+	struct vm_page_alloc* pool = NULL;
 
 	err_exit(!addr || ((u64)addr & 7) != 0, "");
 

@@ -134,7 +134,7 @@ static i32 __shm_get(i32 nKey, i32 bTryHugeTLB, i32 bCreateNew, u64* qwSize, i32
 
 	i32 b1GBFailed = 0;
 
-	err_exit(nKey != IPC_PRIVATE && nKey > 0, "");
+	err_exit(nKey == IPC_PRIVATE || nKey <= 0, "");
 
 	nOriShmFlag = SHM_R | SHM_W | S_IRUSR | S_IWUSR;
 
@@ -203,7 +203,7 @@ i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugeTLB, i32 nLogicPageSizeK, 
 
 	nRetCode = vm_open_space(nKey);
 
-	if(nRetCode)
+	if(nRetCode >= 0)
 		vm_destroy_space();
 
 	nFd = __shm_get(nKey, bTryHugeTLB, 1, &qwSize, &nTlbType);

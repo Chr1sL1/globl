@@ -825,7 +825,8 @@ void test_hash(i32 count, i32 bucket_size)
 
 int main(void)
 {
-	long rslt;
+
+	i32 ret_code;
 
 //	unsigned long i = test_asm_align8(10);
 //	printf("%lu\n", i);
@@ -869,12 +870,26 @@ int main(void)
 	printf("key1 type: %d, area_type: %d, area_idx: %d\n", key1.type, key1.area_type, key1.area_idx);
 	printf("key2 type: %d, s_type: %d, s_idx: %d\n", key2.type, key2.service_type, key2.service_idx);
 
+	ret_code = vm_create_space(0x1001, 4ULL * 1024 * 1024 * 1024, 0, 8, 512 * 1024 * 1024);
+	err_exit(ret_code < 0, "failed.");
+
+	ret_code = vm_create_common_allocator(16, 1024, 64);
+	err_exit(ret_code < 0, "failed.");
+
+	ret_code = timer_module_load();
+	err_exit(ret_code < 0, "failed.");
+
+	timer_module_unload();
+
+	vm_destroy_space();
+
+
 //	test_lua();
 
 //	test_misc();
 
 //	test_ipc_channel();
-	test_ipc_channel_multi_prod(16, 30000);
+//	test_ipc_channel_multi_prod(16, 30000);
 
 //	test_pb();
 
