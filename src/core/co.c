@@ -130,9 +130,9 @@ struct co_task* co_create(co_func_t func)
 	co_stack = stack_allocator_alloc(__co_stack_allocator, &stack_size);
 	err_exit(!co_stack, "co_create: alloc stack failed.");
 
-	stack_size = round_down(stack_size - 16, 16);
+	stack_size = round_down(stack_size, 16);
 	co = (struct co_task*)(co_stack + stack_size - sizeof(struct co_task));
-	co = move_ptr_align64(co, 0) - cache_line_size;
+	co = (struct co_task*)(round_down((u64)co, cache_line_size));
 
 	co->_magic_num = CO_MAGIC_NUM;
 	co->_co_func = func;

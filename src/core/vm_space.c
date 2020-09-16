@@ -90,7 +90,7 @@ static i32 __on_iterate_phdr(struct dl_phdr_info* info, size_t size, void* data)
 	i32 nRetCode = 0;
 	i32 nPageAreaCount = 0;
 
-	printf("loaded: %s, segments: %d, base addr: %10lu", info->dlpi_name, info->dlpi_phnum, info->dlpi_addr);
+	printf("loaded: %s, segments: %d, base addr: 0x%p\n", info->dlpi_name, info->dlpi_phnum, info->dlpi_addr);
 
 	for(i32 i = 0; i < info->dlpi_phnum; ++i)
 	{
@@ -372,7 +372,11 @@ error_ret:
 static inline struct vm_chunk* __find_vm_chunk_by_hash(u64 name_hash)
 {
 	struct rbnode* node = rb_search(&__the_space->rb_root, (void*)name_hash);
+	err_exit_silent(!node);
+
 	return __get_chunk_by_rbnode(node);
+error_ret:
+	return NULL;
 }
 
 static struct vm_chunk* __find_vm_chunk(const char* name)

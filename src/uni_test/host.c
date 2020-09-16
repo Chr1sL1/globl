@@ -822,6 +822,44 @@ void test_hash(i32 count, i32 bucket_size)
 	free(result_arr);
 }
 
+struct co_task_context
+{
+	i32* current_value;
+};
+
+
+void co_task_func(struct co_task* co, void* param)
+{
+	struct co_task_context* cont = (struct co_task_context*)param;
+	
+	for(i32 i = 0; i < 100; ++i)
+	{
+		++(*cont->current_value);
+		printf("value: %d\n", *cont->current_value);
+		co_yield(co);
+	}
+}
+
+void run_co_test(void)
+{
+	i32 test_value = 0;
+	struct co_task_context cont;
+
+	struct co_task* co = co_create(co_task_func);
+	err_exit_silent(!co);
+
+	cont.current_value = &test_value;
+
+	co_run(co, &cont);
+
+	while(*cont.current_value < 100)
+	{
+		co_resume(co);
+	}
+
+error_ret:
+	return;
+}
 
 int main(void)
 {
@@ -870,7 +908,7 @@ int main(void)
 	printf("key1 type: %d, area_type: %d, area_idx: %d\n", key1.type, key1.area_type, key1.area_idx);
 	printf("key2 type: %d, s_type: %d, s_idx: %d\n", key2.type, key2.service_type, key2.service_idx);
 
-	ret_code = vm_create_space(0x1001, 4ULL * 1024 * 1024 * 1024, 0, 8, 512 * 1024 * 1024);
+	ret_code = vm_create_space(0x1001, 4ULL * 1024 * 1024 * 1024, 0, 8, 512 * 1024 / 8);
 	err_exit(ret_code < 0, "failed.");
 
 	ret_code = vm_create_common_allocator(16, 1024, 64);
@@ -879,6 +917,12 @@ int main(void)
 	ret_code = timer_module_load();
 	err_exit(ret_code < 0, "failed.");
 
+	ret_code = co_module_load(1024, 8 * 1024);
+	err_exit(ret_code < 0, "failed.");
+
+	run_co_test();
+
+	co_module_unload();
 	timer_module_unload();
 
 	vm_destroy_space();

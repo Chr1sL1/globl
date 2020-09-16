@@ -31,6 +31,7 @@ struct vm_stack_allocator
 	struct dlist _free_list;
 	void* _payload_trunk_addr;
 	u64 _stk_frm_size;
+	u64 _req_stk_frm_size;
 	u64 _stk_frm_cnt;
 	u64 _sys_pg_size;
 	const char* _name;
@@ -68,6 +69,7 @@ struct vm_stack_allocator* _stkp_init(void* addr, u64 cocurrent_stack_cnt, u64 s
 
 	stkpi->_sys_pg_size = sysconf(_SC_PAGESIZE);
 	stkpi->_stk_frm_size = round_up(stkpi->_sys_pg_size + stack_frm_size, stkpi->_sys_pg_size);
+	stkpi->_req_stk_frm_size = stack_frm_size;
 
 	stkpi->_stkp_tag = STKP_TAG;
 	stkpi->addr_begin = addr;
@@ -75,7 +77,7 @@ struct vm_stack_allocator* _stkp_init(void* addr, u64 cocurrent_stack_cnt, u64 s
 
 	lst_new(&stkpi->_free_list);
 
-	stkpi->_payload_trunk_addr = vm_alloc_page(stack_frm_size * cocurrent_stack_cnt);
+	stkpi->_payload_trunk_addr = vm_alloc_page(stkpi->_stk_frm_size * cocurrent_stack_cnt);
 	err_exit(!stkpi->_payload_trunk_addr, "alloc stack payload failed.");
 
 	for(i32 i = 0; i < stkpi->_stk_frm_cnt; ++i)
@@ -84,7 +86,7 @@ struct vm_stack_allocator* _stkp_init(void* addr, u64 cocurrent_stack_cnt, u64 s
 
 		payload_ptr = stkpi->_payload_trunk_addr + i * stkpi->_stk_frm_size;
 
-		stkpi->_node_pool[i]._payload_addr = payload_ptr + stkpi->_sys_pg_size;
+		stkpi->_node_pool[i]._payload_addr = (char*)payload_ptr + stkpi->_sys_pg_size;
 		lst_push_back(&stkpi->_free_list, &stkpi->_node_pool[i]._dln);
 
 		rslt = mprotect(payload_ptr, stkpi->_sys_pg_size, PROT_READ);
@@ -171,7 +173,7 @@ void* stack_allocator_alloc(struct vm_stack_allocator* stkp, u64* stack_frame_si
 
 	nd->using = 1;
 
-	*stack_frame_size = stkp->_stk_frm_size;
+	*stack_frame_size = stkp->_req_stk_frm_size;
 
 	return _get_payload(nd);
 error_ret:
