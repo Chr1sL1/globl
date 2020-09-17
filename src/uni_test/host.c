@@ -832,8 +832,7 @@ void co_task_func(struct co_task* co, void* param)
 {
 	struct co_task_context* cont = (struct co_task_context*)param;
 	
-	for(i32 i = 0; i < 100; ++i)
-	{
+	for(i32 i = 0; i < 100; ++i) {
 		++(*cont->current_value);
 		printf("value: %d\n", *cont->current_value);
 		co_yield(co);
@@ -854,14 +853,33 @@ void run_co_test(void)
 
 	co_run(co, &cont);
 
-	while(*cont.current_value < 100)
-	{
+	while(*cont.current_value < 100) {
 		co_resume(co);
 	}
 
 error_ret:
 	return;
 }
+
+
+void run_hash_test(i32 cnt, i32 prev_bucket, i32 next_bucket)
+{
+	u64 hash_key[cnt];
+	i32 prev_hash_value[cnt] ;
+	i32 new_hash_value[cnt] ;
+
+	for(i32 i = 0; i < cnt; ++i) {
+		hash_key[i] = rand_ex(1024);
+		prev_hash_value[i] = jump_consist_hash(hash_key[i], prev_bucket);
+	}
+
+	for(i32 i = 0; i < cnt; ++i) {
+		new_hash_value[i] = jump_consist_hash(hash_key[i], next_bucket);
+		printf("%lu\t%d\t%d\n", hash_key[i], prev_hash_value[i], new_hash_value[i]);
+	}
+}
+
+
 
 int main(void)
 {
@@ -923,6 +941,8 @@ int main(void)
 	err_exit(ret_code < 0, "failed.");
 
 	run_co_test();
+
+	run_hash_test(20, 5, 6);
 
 //	net_test_server(1);
 
