@@ -1,6 +1,10 @@
 #ifndef __timer_h__
 #define __timer_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct timer_node;
 typedef void(*timer_func_t)(struct timer_node*, void*);
 
@@ -14,6 +18,10 @@ void del_timer(struct timer_node* timer_node);
 void on_tick(void);
 
 u64 dbg_current_tick(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

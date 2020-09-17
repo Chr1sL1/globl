@@ -1,6 +1,10 @@
 #ifndef __VM_SLAB_ALLOC_H__
 #define __VM_SLAB_ALLOC_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct vm_slab_allocator;
 struct vm_page_pool;
 
@@ -13,6 +17,10 @@ void* vsa_alloc(struct vm_slab_allocator* allocator, u64 size);
 void vsa_free(struct vm_slab_allocator* allocator, void* p);
 
 void vsa_debug_info(struct vm_slab_allocator* allocator);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

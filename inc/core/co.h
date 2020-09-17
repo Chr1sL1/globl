@@ -3,6 +3,10 @@
 
 #include "slist.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct co_task;
 
 typedef void (*co_func_t)(struct co_task*, void*);
@@ -29,6 +33,10 @@ i32 init_co_holder(struct co_holder* ch);
 i32 push_co(struct co_holder* ch, struct co_task* co);
 struct co_task* pop_co(struct co_holder* ch);
 i32 free_all_co(struct co_holder* ch);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

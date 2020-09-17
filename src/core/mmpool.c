@@ -1,6 +1,5 @@
 #include "common_types.h"
 #include "core/mmpool.h"
-#include "core/mmops.h"
 #include "core/dlist.h"
 #include "core/misc.h"
 #include "core/asm.h"
@@ -106,44 +105,6 @@ static i32 _take_free_node(struct _mmpool_impl* mmpi, i32 flh_idx, struct _block
 
 static struct _mmpool_impl* _mmp_init_chunk(void* addr, u64 size, u32 min_block_order, u32 max_block_order);
 static struct _mmpool_impl* _mmp_load_chunk(void* addr);
-
-
-static void* __mmp_create_agent(void* addr, struct mm_config* cfg)
-{
-	return mmp_create(addr, cfg);
-}
-
-static void* __mmp_load_agent(void* addr)
-{
-	return mmp_load(addr);
-}
-
-static void __mmp_destroy_agent(void* alloc)
-{
-	mmp_destroy((struct mmpool*)alloc);
-}
-
-static void* __mmp_alloc_agent(void* alloc, u64 size)
-{
-	return mmp_alloc((struct mmpool*)alloc, size);
-}
-
-static i32 __mmp_free_agent(void* alloc, void* p)
-{
-	return mmp_free((struct mmpool*)alloc, p);
-}
-
-struct mm_ops __mmp_ops =
-{
-	.create_func = __mmp_create_agent,
-	.load_func = __mmp_load_agent,
-	.destroy_func = __mmp_destroy_agent,
-
-	.alloc_func = __mmp_alloc_agent,
-	.free_func = __mmp_free_agent,
-};
-
-
 
 
 static inline i32 _block_size(i32 idx)

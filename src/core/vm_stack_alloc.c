@@ -1,6 +1,5 @@
 #include "common_types.h"
 #include "core/vm_stack_alloc.h"
-#include "core/mmops.h"
 #include "core/dlist.h"
 #include "core/misc.h"
 #include "core/asm.h"

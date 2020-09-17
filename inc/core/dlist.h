@@ -1,6 +1,10 @@
 #ifndef __dlist_h__
 #define __dlist_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct dlnode
 {
 	struct dlnode* prev;
@@ -34,5 +38,9 @@ struct dlnode* lst_first(struct dlist* lst);
 struct dlnode* lst_last(struct dlist* lst);
 
 i32 lst_check(struct dlist* lst);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

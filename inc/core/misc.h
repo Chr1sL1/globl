@@ -1,6 +1,10 @@
 #ifndef __misc_h__
 #define __misc_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define likely(x)		__builtin_expect(!!(x), 1)
 #define unlikely(x)		__builtin_expect(!!(x), 0)
 
@@ -29,6 +33,9 @@
 #define sfence	asm volatile ("sfence")
 #define spin_wait asm volatile ("pause")
 
+#define node_cast(out_type, ptr, m_var)\
+	(struct out_type*)((void*)ptr - (size_t)&(((struct out_type*)0)->m_var))
+
 static inline i64 get_max(i64 a, i64 b)
 {
 	return a - ((a-b) & (a-b) >> 63);
@@ -42,5 +49,8 @@ static inline i64 get_min(i64 a, i64 b)
 void rand_init(u32 seed);
 i64 rand_ex(u64 range);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

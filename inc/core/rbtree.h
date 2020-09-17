@@ -1,6 +1,10 @@
 #ifndef __rbtree_h__
 #define __rbtree_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct rbnode
 {
 	void* key;
@@ -51,5 +55,10 @@ void rb_traverse(struct rbtree* t, order_function f);
 void pre_order(struct rbnode* node, order_function f);
 void in_order(struct rbnode* node, order_function f);
 void post_order(struct rbnode* node, order_function f);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

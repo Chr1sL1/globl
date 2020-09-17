@@ -3,6 +3,10 @@
 
 // multi producer(prod), single consumer(cons), lock-free ipc channel.
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MIN_MSG_SIZE_ORDER	(4)		// >= MIN_MSG_SIZE_ORDER
 #define MAX_MSG_SIZE_ORDER	(17)	// < MAX_MSG_SIZE_ORDER
 #define MSG_POOL_COUNT		(MAX_MSG_SIZE_ORDER - MIN_MSG_SIZE_ORDER)
@@ -44,6 +48,10 @@ i32 ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf);
 
 i32 ipc_channel_check_state_cons(struct ipc_cons_port* cons_port);
 i32 ipc_channel_check_state_prod(struct ipc_prod_port* prod_port);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

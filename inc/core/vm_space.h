@@ -1,6 +1,10 @@
 #ifndef __vmspace_h__
 #define __vmspace_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 i32 vm_create_space(i32 nKey, u64 qwSize, i32 bTryHugePage, i32 nLogicPageSizeK, i32 nMaxPageCntPerAlloc);
 i32 vm_open_space(i32 nKey);
 i32 vm_destroy_space(void);
@@ -28,6 +32,10 @@ struct VMUsage
 };
 
 i32 vm_mem_usage(struct VMUsage* pUsageData);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

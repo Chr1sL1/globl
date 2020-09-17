@@ -1,6 +1,10 @@
 #ifndef __net_h__
 #define __net_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct net_struct;
 struct acceptor;
 struct session;
@@ -53,6 +57,9 @@ i32 net_set_user_ptr(struct session* ses, void* usr_ptr);
 void* net_get_user_ptr(struct session* ses);
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

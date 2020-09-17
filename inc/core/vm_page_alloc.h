@@ -1,6 +1,10 @@
 #ifndef __vm_page_alloc_h__
 #define __vm_page_alloc_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct vm_page_alloc;
 
 struct vm_page_alloc* vpp_create(void* addr, u64 total_size, u64 page_size_k, u64 max_page_count_per_alloc);
@@ -17,5 +21,9 @@ i32 vpp_free(struct vm_page_alloc* up, void* p);
 
 
 i32 vpp_check(struct vm_page_alloc* up);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -1,8 +1,34 @@
 #ifndef __mmpool_h__
 #define __mmpool_h__
 
+// legacy code.
+struct mm_config
+{
+	u64 total_size;
 
-struct mm_config;
+	union
+	{
+		// for mmpool
+		struct
+		{
+			u32 min_order;
+			u32 max_order;
+		};
+
+		// for pgpool
+		struct
+		{
+			u32 page_size;
+			u32 maxpg_count;
+		};
+
+		// for stkpool
+		struct
+		{
+			u32 stk_frm_size;
+		};
+	};
+};
 
 struct mmpool
 {

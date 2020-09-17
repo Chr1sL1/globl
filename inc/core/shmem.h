@@ -4,6 +4,10 @@
 #include "rbtree.h"
 #include "dlist.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MAX_SHMM_NAME_LEN (255)
 
 struct shmm_blk
@@ -31,6 +35,10 @@ i32 shmm_destroy(struct shmm_blk* shm);
 
 void* shmm_begin_addr(struct shmm_blk* shm);
 void* shmm_end_addr(struct shmm_blk* shm);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

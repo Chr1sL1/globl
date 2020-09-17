@@ -1,6 +1,10 @@
 #ifndef __raft_h__
 #define __raft_h__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct raft_node;
 struct ipc_cons_port;
 
@@ -41,5 +45,9 @@ void rf_update(struct raft_node* node);
 i32 rf_state(struct raft_node* node);
 i32 rf_term(struct raft_node* node);
 void rf_reset_timeout(struct raft_node* node, u32 current_time);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

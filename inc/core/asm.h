@@ -1,6 +1,10 @@
 #ifndef _ASM_H_
 #define _ASM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define mfence	asm volatile ("mfence")
 #define lfence	asm volatile ("lfence")
 #define sfence	asm volatile ("sfence")
@@ -161,5 +165,9 @@ static inline void* move_ptr_roundup(void* ptr, u64 offset, u64 align)
 {
 	return (void*)((((u64)ptr + offset) + (align - 1)) & (~(align - 1)));
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	// _ASM_H_
