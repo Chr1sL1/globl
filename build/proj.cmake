@@ -14,7 +14,7 @@ function (add_project proj_name proj_type)
 	set(lib_dir ${CMAKE_SOURCE_DIR}/../lib)
 	set(exe_dir ${CMAKE_SOURCE_DIR}/../bin)
 
-	file(GLOB_RECURSE proj_src_list RELATIVE ${src_dir} ${src_dir}/*.c ${src_dir}/*.cpp ${src_dir}/*.s)
+	file(GLOB_RECURSE proj_src_list RELATIVE ${src_dir} ${src_dir}/*.c ${src_dir}/*.cpp ${src_dir}/*.cc ${src_dir}/*.s)
 
 	if(${is_x86})
 		message(STATUS "Yay!! we can use x86 assembly.")
