@@ -1,8 +1,8 @@
 #include "common_types.h"
 #include "core/net.h"
-#include "core/mmspace.h"
 #include "core/misc.h"
 #include "core/asm.h"
+#include "core/co.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -40,8 +40,8 @@ static struct net_config __cfg =
 {
 	.nr_acceptor = 64,
 	.nr_session = 64,
-	.recv_buff_len = 1024 * 128,
-	.send_buff_len = 1024 * 128,
+	.recv_buff_len = 1024 * 1024,
+	.send_buff_len = 1024 * 1024,
 };
 
 struct svr_session
@@ -347,8 +347,8 @@ i32 net_test_server(i32 silent)
 			count_tick = __time_val;
 			if(time_diff > 0)
 			{
-//				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %d, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
-//						net_session_count(net), __recv_bytes_server, __recv_bytes_client, __recv_bytes_server * 2 / time_diff, __recv_bytes_client * 2 / time_diff);
+				printf(">>>>>>>>>>>>>>>>>>>>>> session count: %d, server recvd bytes: %lu, client recvd bytes: %lu, upload speed: %lu(KB/s), download speed: %lu(KB/s).\n",
+						net_session_count(net), __recv_bytes_server, __recv_bytes_client, __recv_bytes_server * 2 / time_diff, __recv_bytes_client * 2 / time_diff);
 			}
 		}
 	}

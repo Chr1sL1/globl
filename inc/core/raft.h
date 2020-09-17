@@ -36,7 +36,7 @@ struct raft_msg_sync_op
 
 struct raft_node* rf_create_node(i32 service_id, struct ipc_cons_port* recv_port, const struct raft_msg_sync_op* syn_op);
 void rf_destroy_node(struct raft_node* node);
-void update(struct raft_node* node);
+void rf_update(struct raft_node* node);
 
 i32 rf_state(struct raft_node* node);
 i32 rf_term(struct raft_node* node);

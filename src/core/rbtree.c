@@ -122,6 +122,8 @@ inline void rb_reset_compare_function(struct rbtree* t, compare_function cf)
 	t->cfunc = cf;
 }
 
+static struct rbnode* do_rb_search(struct rbtree* t, void* key, struct rbnode** hot);
+
 static inline void _left_rotate(struct rbtree* t, struct rbnode* node)
 {
 	struct rbnode* rc;
@@ -296,7 +298,7 @@ i32 rb_insert(struct rbtree* t, struct rbnode* node)
 	struct rbnode* hot;
 
 	if(!node || ((u64)node & 0x3) != 0) goto error_ret;
-	if(rb_search(t, node->key, &hot) != 0) goto error_ret;
+	if(do_rb_search(t, node->key, &hot) != 0) goto error_ret;
 
 	node->isblack = 0;
 	node->lchild = 0;
@@ -328,7 +330,12 @@ error_ret:
 	return -1;
 }
 
-struct rbnode* rb_search(struct rbtree* t, void* key, struct rbnode** hot)
+struct rbnode* rb_search(struct rbtree* t, void* key)
+{
+	struct rbnode* hot;
+	return do_rb_search(t, key, &hot);
+}
+struct rbnode* do_rb_search(struct rbtree* t, void* key, struct rbnode** hot)
 {
 	i32 comp_ret = 1;
 	struct rbnode* h;
@@ -702,7 +709,7 @@ struct rbnode* rb_remove(struct rbtree* t, void* key)
 	if(!t->root) goto error_ret;
 	if(t->size <= 0) return 0;
 
-	x = rb_search(t, key, &r);
+	x = do_rb_search(t, key, &r);
 	if(!x) goto error_ret;
 
 	rb_remove_node(t, x);

@@ -42,7 +42,7 @@ struct gnode* graph_del_node(struct graph* g, i32 node_key)
 
 	if(!g) goto error_ret;
 
-	rbn = rb_search(&g->gnode_table, node_key, NULL);
+	rbn = rb_search(&g->gnode_table, node_key);
 	if(!rbn) goto error_ret;
 
 	ret = node_cast(gnode, rbn, table_node);
@@ -62,10 +62,10 @@ i32 graph_add_edge(struct graph* g, struct ngb_node* ngb1, struct ngb_node* ngb2
 
 	if(!g) goto error_ret;
 
-	rbn1 = rb_search(&g->gnode_table, ngb1->key, NULL);
+	rbn1 = rb_search(&g->gnode_table, ngb1->key);
 	if(!rbn1) goto error_ret;
 
-	rbn2 = rb_search(&g->gnode_table, ngb2->key, NULL);
+	rbn2 = rb_search(&g->gnode_table, ngb2->key);
 	if(!rbn2) goto error_ret;
 
 	nd1 = node_cast(gnode, rbn1, table_node);

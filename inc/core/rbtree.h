@@ -38,7 +38,8 @@ struct rbnode* rb_sibling(struct rbnode* node);
 struct rbnode* rb_succ(struct rbnode* node);
 
 i32 rb_insert(struct rbtree* t, struct rbnode* node);
-struct rbnode* rb_search(struct rbtree* t, void* key, struct rbnode** hot);
+struct rbnode* rb_search(struct rbtree* t, void* key);
+
 struct rbnode* rb_remove(struct rbtree* t, void* key);
 void rb_remove_node(struct rbtree* t, struct rbnode* x);
 

@@ -7,6 +7,9 @@ struct co_task;
 
 typedef void (*co_func_t)(struct co_task*, void*);
 
+i32 co_module_load(u32 cocurrent_stack_cnt, u32 stack_frame_size);
+void co_module_unload(void);
+
 struct co_task* co_create(co_func_t func);
 void co_destroy(struct co_task* co);
 

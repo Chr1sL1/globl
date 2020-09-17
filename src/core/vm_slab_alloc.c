@@ -2,7 +2,6 @@
 #include "core/vm_slab_alloc.h"
 #include "core/dlist.h"
 #include "core/vm_space.h"
-#include "core/vm_page_pool.h"
 #include "core/asm.h"
 #include "core/misc.h"
 
@@ -51,7 +50,7 @@ struct vm_slab_allocator
 	u32 _slab_cnt;
 	u32 _slab_list_cnt;
 	u32 _alignment_order;
-	struct vm_page_pool* _page_pool;
+	const char* _name;
 
 	struct vm_slab_list* _slab_list;
 };
@@ -98,14 +97,12 @@ error_ret:
 }
 
 
-struct vm_slab_allocator* vsa_create(const char* allocator_name, struct vm_page_pool* page_pool, u32 min_obj_size, u32 max_obj_size, u32 init_obj_cnt, u32 alignment_order)
+struct vm_slab_allocator* vsa_create(const char* allocator_name, u32 min_obj_size, u32 max_obj_size, u32 init_obj_cnt, u8 alignment_order)
 {
 	u64 allocator_size;
 	i32 slab_list_cnt, min_size_order, max_size_order;
 
 	struct vm_slab_allocator* vsa = 0;
-	err_exit(!page_pool, "");
-	err_exit(alignment_order >= 12, "");
 
 	min_size_order = log_2(round_up_2power(min_obj_size + sizeof(struct vm_slab_cookie)));
 	max_size_order = log_2(round_up_2power(max_obj_size + sizeof(struct vm_slab_cookie)));
@@ -114,16 +111,16 @@ struct vm_slab_allocator* vsa_create(const char* allocator_name, struct vm_page_
 	allocator_size = sizeof(struct vm_slab_allocator) + slab_list_cnt * sizeof(struct vm_slab_list);
 
 	vsa = (struct vm_slab_allocator*)vm_new_chunk(allocator_name, allocator_size);
-	err_exit(!vsa, "");
+	err_exit(!vsa, "new slab allocator failed.");
 
 	vsa->_magic = VM_SLAB_ALLOC_MAGIC;
 	vsa->_min_obj_size_order = min_size_order;
 	vsa->_max_obj_size_order = max_size_order;
 	vsa->_init_obj_cnt = init_obj_cnt;
-	vsa->_page_pool = page_pool;
 	vsa->_alignment_order = alignment_order;
 	vsa->_slab_list_cnt = slab_list_cnt;
 	vsa->_slab_list = (struct vm_slab_list*)(vsa + 1);
+	vsa->_name = allocator_name;
 
 	for (i32 i = 0; i < slab_list_cnt; ++i)
 	{
@@ -150,7 +147,10 @@ error_ret:
 
 void vsa_destroy(struct vm_slab_allocator* allocator)
 {
+	err_exit_silent(!allocator);
 
+error_ret:
+	return;
 }
 
 static i32 _recycle_empty_slab(struct vm_slab_allocator* allocator)
@@ -174,7 +174,7 @@ static i32 _recycle_empty_slab(struct vm_slab_allocator* allocator)
 	while(node != lst_last(&allocator->_slab_list[target_idx]._empty_list))
 	{
 		struct vm_slab* slab = _convert_list_node(node);
-		vpp_free(allocator->_page_pool, slab);
+		vm_free_page(slab);
 
 		++cnt;
 
@@ -201,7 +201,7 @@ static inline struct vm_slab* _new_slab(struct vm_slab_allocator* allocator, i32
 	header_size = roundup_order(sizeof(struct vm_slab) + bit_map_cnt * sizeof(u64), allocator->_alignment_order);
 	slab_size = header_size + (1 << size_order) * (obj_count + 1);
 
-	slab = (struct vm_slab*)vpp_alloc(allocator->_page_pool, slab_size);
+	slab = (struct vm_slab*)vm_alloc_page(slab_size);
 	err_exit(!slab || !_check_aligment(slab, allocator->_alignment_order), "");
 
 	slab->_magic = VM_SLAB_MAGIC;

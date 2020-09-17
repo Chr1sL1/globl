@@ -4,7 +4,8 @@
 struct timer_node;
 typedef void(*timer_func_t)(struct timer_node*, void*);
 
-i32 init_timer(void);
+i32 timer_module_load(void);
+void timer_module_unload(void);
 
 struct timer_node* timer_schedule(u32 delay_tick, timer_func_t callback_func, i32 run_once, void* param);
 
