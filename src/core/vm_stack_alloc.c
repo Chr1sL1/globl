@@ -35,7 +35,7 @@ struct vm_stack_allocator
 	u64 _stk_frm_cnt;
 	u64 _sys_pg_size;
 	const char* _name;
-	struct _stkp_node _node_pool[0];
+	struct _stkp_node _node_pool[];
 };
 
 static inline void _set_payload(struct _stkp_node* node, void* payload)

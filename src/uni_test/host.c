@@ -837,6 +837,8 @@ void co_task_func(struct co_task* co, void* param)
 		++(*cont->current_value);
 		printf("value: %d\n", *cont->current_value);
 		co_yield(co);
+		++(*cont->current_value);
+		co_yield(co);
 	}
 }
 
@@ -922,6 +924,8 @@ int main(void)
 
 	run_co_test();
 
+//	net_test_server(1);
+
 	co_module_unload();
 	timer_module_unload();
 
@@ -940,7 +944,6 @@ int main(void)
 //	rslt = init_mm(102);
 //	if(rslt < 0) goto error_ret;
 
-//	net_test_server(1);
 
 //	init_timer();
 

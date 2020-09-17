@@ -33,7 +33,7 @@ include_directories(${CMAKE_SOURCE_DIR}/../3rd/inc)
 
 link_directories(${CMAKE_SOURCE_DIR}/../3rd/lib)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=gnu11 -Wint-to-pointer-cast -Wpointer-to-int-cast -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=gnu99 -Wint-to-pointer-cast -Wpointer-to-int-cast -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11 -Wint-to-pointer-cast -Wpointer-to-int-cast -fPIC")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -finline-functions -pthread")
 add_compile_options(-g)
