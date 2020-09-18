@@ -402,6 +402,8 @@ static i32 _net_destroy_acc(struct acceptor* aci)
 	i32 rslt;
 	struct net_struct* inet = aci->_inet;
 
+	err_exit_silent(!inet);
+
 	close(aci->_sock_fd);
 	aci->_type_info = 0;
 
@@ -530,7 +532,7 @@ struct acceptor* net_create_acceptor(struct net_struct* inet, u32 ip, u16 port)
 	struct epoll_event ev;
 
 	aci = _net_create_acc(inet, ip, port);
-	if(!aci) goto error_ret;
+	if(!aci) return -1;
 
 	ev.events = EPOLLIN;
 	ev.data.ptr = aci;
@@ -548,7 +550,7 @@ i32 net_destroy_acceptor(struct acceptor* aci)
 {
 	struct net_struct* inet;
 
-	if(!aci) goto error_ret;
+	if(!aci || !aci->_inet) goto error_ret;
 
 	inet = aci->_inet;
 

@@ -940,11 +940,11 @@ int main(void)
 	ret_code = co_module_load(1024, 8 * 1024);
 	err_exit(ret_code < 0, "failed.");
 
-	run_co_test();
+//	run_co_test();
 
 	run_hash_test(20, 5, 6);
 
-//	net_test_server(1);
+	net_test_server(1);
 
 	co_module_unload();
 	timer_module_unload();

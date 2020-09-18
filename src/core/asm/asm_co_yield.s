@@ -13,7 +13,7 @@ asm_co_yield:
 	addq	%rdx, %rax
 	movq	%rax, 0x40(%rbx)
 
-	movq	$0x0, 0x38(%rbx)
+#	movq	$0x0, 0x38(%rbx)
 
 	movq    0x10(%rbx),%rax
 	movq    %rax,%rdx

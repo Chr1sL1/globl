@@ -158,6 +158,8 @@ error_ret:
 	return;
 }
 
+//static int __alloc_ref = 0;
+
 void* stack_allocator_alloc(struct vm_stack_allocator* stkp, u64* stack_frame_size)
 {
 	struct dlnode* dln;
@@ -174,8 +176,11 @@ void* stack_allocator_alloc(struct vm_stack_allocator* stkp, u64* stack_frame_si
 
 	*stack_frame_size = stkp->_req_stk_frm_size;
 
+//	++__alloc_ref;
+
 	return _get_payload(nd);
 error_ret:
+//	printf("stack_allocator_alloc failed, ref: %d.\n", __alloc_ref);
 	return 0;
 }
 
@@ -198,6 +203,8 @@ i32 stack_allocator_free(struct vm_stack_allocator* stkp, void* p)
 	stkp->_node_pool[idx].using = 0;
 
 	lst_push_front(&stkp->_free_list, &stkp->_node_pool[idx]._dln);
+
+	--__alloc_ref;
 
 	return 0;
 error_ret:

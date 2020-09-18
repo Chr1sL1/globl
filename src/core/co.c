@@ -55,6 +55,21 @@ struct co_task
 	struct slnode _list_node;
 } __cache_aligned__;
 
+static inline void __clear_co_task(struct co_task* co)
+{
+	co->_magic_num = 0;		// 0x0
+	co->_co_resume_flag = 0;	// 0x08
+	co->_co_jump_flag = 0;	// 0x09
+	co->_co_running = 0;		// 0x0A
+
+	co->_co_stack_top = 0;			// 0x10
+	co->_co_func = 0;				// 0x18
+	co->_co_yield_ret_rsp = 0;		// 0x20
+	co->_co_func_ret_addr = 0;		// 0x28
+	co->_co_final_ret_addr = 0;		// 0x30
+	co->_co_stack_bottom = 0;			// 0x38
+}
+
 struct vm_stack_allocator* __co_stack_allocator = NULL;
 
 i32 co_module_load(u32 cocurrent_stack_cnt, u32 stack_frame_size)
@@ -140,7 +155,7 @@ struct co_task* co_create(co_func_t func)
 	co->_co_stack_bottom = co_stack;
 	co->_co_resume_flag = 0;
 
-	printf("co_create: %p, size: %lu\n", co, sizeof(struct co_task));
+//	printf("co_create_succ: %p, size: %lu\n", co, sizeof(struct co_task));
 	return co;
 error_ret:
 	return 0;
@@ -148,11 +163,18 @@ error_ret:
 
 void co_destroy(struct co_task* co)
 {
+	void* co_stack;
 	struct co_task* coi = __conv_co(co);
 	err_exit(!coi, "co_destroy: invalid param");
 
-	if(coi->_co_stack_bottom)
-		stack_allocator_free(__co_stack_allocator, coi->_co_stack_bottom);
+	co_stack = coi->_co_stack_bottom;
+	__clear_co_task(coi);
+
+	if(co_stack)
+	{
+//		printf("co_destroy_succ\n");
+		stack_allocator_free(__co_stack_allocator, co_stack);
+	}
 
 error_ret:
 	return;
@@ -160,7 +182,7 @@ error_ret:
 
 i32 co_run(struct co_task* co, void* co_func_param)
 {
-	printf("co_run: %p\n", co);
+//	printf("co_run: %p\n", co);
 	struct co_task* coi = __conv_co(co);
 	err_exit(!coi, "co_run: invalid param");
 
@@ -181,7 +203,7 @@ i32 co_yield(struct co_task* co)
 
 	return asm_co_yield(coi);
 error_ret:
-	printf("co: %p\n", co);
+//	printf("co: %p\n", co);
 	return -1;
 }
 

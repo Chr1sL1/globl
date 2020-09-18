@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <string.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -16,7 +17,7 @@
 #define USR_TYPE_INFO (0x123123)
 #define MAX_LIVE_interVAL (10000)
 
-#define TEST_CONN_COUNT (10)
+#define TEST_CONN_COUNT (1)
 
 static i32 __running = 1;
 static u64 __start_time = 0;
@@ -38,10 +39,10 @@ enum USR_SESSION_STATE
 
 static struct net_config __cfg =
 {
-	.nr_acceptor = 64,
-	.nr_session = 64,
-	.recv_buff_len = 1024 * 1024,
-	.send_buff_len = 1024 * 1024,
+	.nr_acceptor = 2048,
+	.nr_session = 2048,
+	.recv_buff_len = 1024,
+	.send_buff_len = 1024,
 };
 
 struct svr_session
@@ -53,6 +54,7 @@ struct svr_session
 struct usr_session
 {
 	struct session* s;
+	struct co_task* co;
 	u32 idx;
 	u32 state;
 	u64 type_info;
@@ -60,6 +62,9 @@ struct usr_session
 	u64 disconn_tick;
 	u64 live_interval;
 	u64 sleep_interval;
+	BOOL is_rpc_calling;
+	i32 rpc_ref;
+	char* buf;
 };
 
 static struct usr_session __conn_session[TEST_CONN_COUNT] =
@@ -75,6 +80,8 @@ static struct usr_session __conn_session[TEST_CONN_COUNT] =
 		.sleep_interval = 0,
 	}
 };
+
+static void rpc_call(struct co_task* co, void* param);
 
 static void _svr_session_ctor(void* ptr)
 {
@@ -145,6 +152,15 @@ error_ret:
 static i32 on_client_recv(struct session* se, const void* buf, i32 len)
 {
 	__recv_bytes_client += len;
+	printf("on_client_recv\n");
+
+	struct usr_session* us = (struct usr_session*)net_get_user_ptr(se);
+	err_exit(!us, "strange error in on_client_recv");
+
+	memcpy(us->buf, buf, __cfg.recv_buff_len);
+
+	co_resume(us->co);
+	co_destroy(us->co);
 
 	return 0;
 error_ret:
@@ -173,6 +189,9 @@ static i32 on_client_conn(struct session* se)
 	us->conn_tick = __time_val;
 	us->live_interval = random() % MAX_LIVE_interVAL;
 	us->sleep_interval = random() % MAX_LIVE_interVAL;
+	us->buf = malloc(__cfg.recv_buff_len);
+	us->is_rpc_calling = FALSE; 
+	us->rpc_ref = 0;
 
 //	if(us->idx < 100)
 //		printf("client session connected [%d]\n", us->idx);
@@ -193,6 +212,8 @@ static i32 on_client_disconn(struct session* se)
 	net_set_user_ptr(se, 0);
 	us->disconn_tick = __time_val;
 
+	free(us->buf);
+
 //	if(us->idx < 100)
 //		printf("client session disconnected [%d]\n", us->idx);
 
@@ -207,10 +228,63 @@ static i32 fill_send_data(char* buf, i32 size)
 
 	for(i32 i = 0; i < len; i++)
 	{
-		buf[i] = random() % 255;
+		buf[i] = 'A' + random() % 26;
 	}
 
 	return len;
+}
+
+void rpc_call(struct co_task* co, void* param)
+{
+	i32 send_len;
+	struct usr_session* us = (struct usr_session*)param;
+	char send_buf[__cfg.send_buff_len];
+
+	printf("rpc_call\n");
+
+	us->is_rpc_calling = TRUE;
+
+	do
+	{
+		send_len = fill_send_data(send_buf, __cfg.send_buff_len);
+	} while(send_len <= 0);
+
+	net_send(us->s, send_buf, send_len);
+	__send_bytes += (__cfg.send_buff_len - 1);
+
+	co_yield(us->co);
+
+	us->is_rpc_calling = FALSE;
+	--us->rpc_ref;
+
+//	printf("--------recvd: %s\n", us->buf);
+}
+
+static void run_client_send(struct usr_session* us)
+{
+	static __count = 0;
+	++__count;
+
+	printf("__count: %d\n", __count);
+
+	if(!us->is_rpc_calling)
+	{
+		printf("run_client_send, calling rpc.\n");
+		us->co = co_create(rpc_call);
+		if(us->co)
+		{
+			co_run(us->co, us);
+			++us->rpc_ref;
+		}
+		else
+			printf("null co.\n");
+		printf("run_client_send, calling rpc: %d, rpc_ref: %d\n", us->is_rpc_calling, us->rpc_ref);
+	}
+	else
+	{
+		printf("empty call\n");
+	}
+	
 }
 
 static i32 run_connector(struct net_struct* net)
@@ -224,9 +298,8 @@ static i32 run_connector(struct net_struct* net)
 	u64 r1 = 0, r2 = 0;
 	i32 send_len;
 	i32 pending_count = 0;
-	u32 ip = inet_addr("9.140.145.7");
+	u32 ip = inet_addr("9.134.145.7");
 
-	char send_buf[__cfg.send_buff_len];
 
 	r1 = rdtsc();
 
@@ -260,13 +333,8 @@ static i32 run_connector(struct net_struct* net)
 				continue;
 			}
 
-			do
-			{
-				send_len = fill_send_data(send_buf, __cfg.send_buff_len);
-			} while(send_len <= 0);
+			run_client_send(&__conn_session[i]);
 
-			net_send(__conn_session[i].s, send_buf, send_len);
-			__send_bytes += (__cfg.send_buff_len - 1);
 			continue;
 		}
 
