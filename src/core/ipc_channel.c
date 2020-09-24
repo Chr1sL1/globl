@@ -4,7 +4,6 @@
 #include "core/asm.h"
 #include "core/shmem.h"
 #include "core/shm_key.h"
-#include "core/slist.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -94,6 +93,7 @@ struct ipc_cons_port
 {
 	struct ipc_channel_port _local_port;
 	ipc_read_func_t _read_func;
+	void* _usr_ptr;
 };
 
 static u64 __rdtsc_read = 0;
@@ -208,7 +208,7 @@ static i32 __read_msg(struct ipc_cons_port* cons_port, struct ipc_msg_queue_node
 	err_exit(msg_hdr == 0, "invalid msg_hdr, size_order: %d", msg_node->_msg_size_order);
 
 	if(cons_port->_read_func)
-		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_from_service_type, msg_hdr->_from_service_index);
+		(*cons_port->_read_func)((char*)(msg_hdr + 1), msg_hdr->_msg_size, msg_hdr->_from_service_type, msg_hdr->_from_service_index, cons_port->_usr_ptr);
 
 	__free_msg_sc(msg_pool, msg_hdr);
 //	msg_node->_node_tag = 0;
@@ -479,7 +479,7 @@ error_ret:
 	return -1;
 }
 
-struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_key, ipc_read_func_t read_func)
+struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_key, ipc_read_func_t read_func, void* usr_ptr)
 {
 	i32 rslt;
 	struct ipc_cons_port* icp;
@@ -498,6 +498,7 @@ struct ipc_cons_port* ipc_open_cons_port(struct ipc_service_key* cons_service_ke
 	rslt = __cas64((u64*)(&channel->_cons_port), 0LL, (u64)icp);
 	err_exit(!rslt, "cons port has already been opened.");
 
+	icp->_usr_ptr = usr_ptr;
 	icp->_read_func = read_func;
 
 	return icp;
@@ -607,7 +608,7 @@ error_ret:
 	return -1;
 }
 
-char* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, u32 size)
+void* ipc_alloc_write_buf_mp(struct ipc_prod_port* prod_port, u32 size)
 {
 	u32 pool_idx, free_node, new_header, tail_node;
 
@@ -648,7 +649,7 @@ error_ret:
 	return 0;
 }
 
-i32 ipc_write_mp(struct ipc_prod_port* prod_port, const char* buf)
+i32 ipc_write_mp(struct ipc_prod_port* prod_port, const void* buf)
 {
 	struct ipc_msg_header* msg_header;
 	struct ipc_channel* channel;

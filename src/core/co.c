@@ -50,9 +50,6 @@ struct co_task
 	u64 _rdtsc_yield;		// 0x40
 	u64 _rdtsc_resume;	// 0x48	
 
-	/*****************************************/
-
-	struct slnode _list_node;
 } __cache_aligned__;
 
 static inline void __clear_co_task(struct co_task* co)
@@ -126,11 +123,6 @@ static inline struct co_task* __conv_co(struct co_task* co)
 	return coi;
 error_ret:
 	return 0;
-}
-
-static inline struct co_task* __conv_co_from_slnode(struct slnode* node)
-{
-	return (struct co_task*)((u64)node - (u64)&(((struct co_task*)(0))->_list_node));
 }
 
 struct co_task* co_create(co_func_t func)
@@ -227,42 +219,6 @@ u64 co_profile_yield(struct co_task* co)
 u64 co_profile_resume(struct co_task* co)
 {
 	return co->_rdtsc_resume;
-}
-
-i32 init_co_holder(struct co_holder* ch)
-{
-	sl_init(&ch->_co_list);
-	return 0;
-error_ret:
-	return -1;
-}
-
-i32 push_co(struct co_holder* ch, struct co_task* co)
-{
-	struct co_task* coi = __conv_co(co);
-	err_exit(!coi, "co_yield: invalid param");
-
-	coi->_list_node._next = 0;
-
-	sl_push_head(&ch->_co_list, &coi->_list_node);
-
-	return 0;
-error_ret:
-	return -1;
-}
-
-struct co_task* pop_co(struct co_holder* ch)
-{
-
-error_ret:
-	return 0;
-}
-
-i32 free_all_co(struct co_holder* ch)
-{
-
-error_ret:
-	return -1;
 }
 
 

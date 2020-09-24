@@ -1,7 +1,7 @@
 #include "common_types.h"
 #include "core/rbtree.h"
 #include "core/dlist.h"
-#include "core/common.h"
+#include "core/misc.h"
 
 #define is_black(node)	(!(node) || (node)->isblack)
 #define is_red(node)	((node) && !(node)->isblack)

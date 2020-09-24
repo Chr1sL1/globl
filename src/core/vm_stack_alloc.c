@@ -204,7 +204,7 @@ i32 stack_allocator_free(struct vm_stack_allocator* stkp, void* p)
 
 	lst_push_front(&stkp->_free_list, &stkp->_node_pool[idx]._dln);
 
-	--__alloc_ref;
+//	--__alloc_ref;
 
 	return 0;
 error_ret:

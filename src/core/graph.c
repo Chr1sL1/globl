@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "common_types.h"
-#include "core/common.h"
+#include "core/misc.h"
 #include "core/dlist.h"
 #include "core/rbtree.h"
 #include "core/graph.h"

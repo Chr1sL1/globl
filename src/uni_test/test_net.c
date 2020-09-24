@@ -262,7 +262,7 @@ void rpc_call(struct co_task* co, void* param)
 
 static void run_client_send(struct usr_session* us)
 {
-	static __count = 0;
+	static i32 __count = 0;
 	++__count;
 
 	printf("__count: %d\n", __count);

@@ -10,7 +10,6 @@
 #include "core/rbtree.h"
 #include "core/dlist.h"
 #include "core/graph.h"
-#include "core/common.h"
 #include "core/misc.h"
 #include "core/vm_space.h"
 #include "core/net.h"

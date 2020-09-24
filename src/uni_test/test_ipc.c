@@ -90,7 +90,7 @@ static void __on_read_msg(const char* buf, unsigned int size, int prod_service_t
 	++__recv_cnt;
 }
 
-static void __on_read_msg_ex(const char* buf, unsigned int size, int prod_service_type, int prod_service_index)
+static void __on_read_msg_ex(const char* buf, unsigned int size, int prod_service_type, int prod_service_index, void* ptr)
 {
 	struct test_msg* msg = (struct test_msg*)buf;
 
@@ -197,7 +197,7 @@ int test_ipc_channel(void)
 	}
 
 
-	cons_port = ipc_open_cons_port(&cons_key, __on_read_msg);
+	cons_port = ipc_open_cons_port(&cons_key, __on_read_msg, NULL);
 	err_exit(!cons_port, "open cons port failed.");
 
 	prod_port = ipc_open_prod_port(&cons_key, &prod_key);
@@ -313,7 +313,7 @@ int test_ipc_channel_multi_prod(int prod_cnt, int capacity)
 		printf("ipc channel loaded.\n");
 	}
 
-	cons_port = ipc_open_cons_port(&__cons_key, __on_read_msg_ex);
+	cons_port = ipc_open_cons_port(&__cons_key, __on_read_msg_ex, NULL);
 	err_exit(!cons_port, "open cons port failed.");
 
 	ipc_channel_check_state_cons(cons_port);

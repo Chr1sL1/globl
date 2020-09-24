@@ -48,8 +48,8 @@ union shm_key
 			struct
 			{
 				unsigned service_reserved : 12;
-				unsigned service_idx : SHM_SERVICE_INDEX_BITS; // 6
-				unsigned service_type : SHM_SERVICE_TYPE_BITS; // 10
+				unsigned service_idx : SHM_SERVICE_INDEX_BITS; // 10
+				unsigned service_type : SHM_SERVICE_TYPE_BITS; // 6 
 			};
 
 			struct 

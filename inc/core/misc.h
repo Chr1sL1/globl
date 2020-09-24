@@ -1,6 +1,8 @@
 #ifndef __misc_h__
 #define __misc_h__
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,7 +49,10 @@ static inline i64 get_min(i64 a, i64 b)
 }
 
 void rand_init(u32 seed);
-i64 rand_ex(u64 range);
+u64 rand_ex(u64 range);
+u64 rand_ex_min_max(u64 min, u64 max);
+
+u64 sys_time_ms(void);
 
 #ifdef __cplusplus
 }
