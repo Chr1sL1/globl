@@ -47,6 +47,7 @@ void rf_on_keep_alive(struct raft_node* node, i32 remote_service_id, i32 term_id
 
 i32 rf_state(struct raft_node* node);
 i32 rf_term(struct raft_node* node);
+i32 rf_service_id(struct raft_node* node);
 void* rf_usr_ptr(struct raft_node* node);
 void rf_reset_timeout(struct raft_node* node, u32 current_time);
 

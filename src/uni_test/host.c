@@ -588,6 +588,7 @@ extern int test_ipc_channel_multi_prod(int, int);
 
 extern void test_lua(void);
 extern void test_misc(void);
+extern void test_raft(i32);
 
 struct bit_set
 {
@@ -943,7 +944,10 @@ int main(void)
 
 	run_hash_test(20, 5, 6);
 
-	net_test_server(1);
+//	net_test_server(1);
+
+
+	test_raft(3);
 
 	co_module_unload();
 	timer_module_unload();
